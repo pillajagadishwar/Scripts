@@ -1,0 +1,30 @@
+select * from sys.dm_os_wait_stats order by wait_time_ms desc
+
+select * from sys.dm_exec_cached_plans -- To find out what kind of query is the plan for Adhoc query or procedure or prepared
+
+SELECT * FROM sys.dm_exec_cached_plans cp CROSS APPLY sys.dm_exec_query_plan (cp.plan_handle)  -- To find out query plans
+
+select * from sys.dm_exec_query_stats
+
+select * from sys.dm_exec_query_memory_grants
+
+select a.session_id, a.requested_memory_kb, a.granted_memory_kb, a.required_memory_kb from sys.dm_exec_query_memory_grants as a cross apply sys.dm_exec_query_plan(a.plan_handle)
+
+INdex Fragmentation: sys.dm_db_index_physical_stats
+Options: Limited, detailed
+Stats: STATS_DATE(object_id, index_id) -- Existing function
+
+
+Wait types:
+
+Writelog
+dirty_page_poll
+sleep_task
+resource_semaphore
+Async_network_io
+pageiolatch_sh
+waitfor
+
+CPU bottlenecks
+Memory bottlenecks
+IO bottlenecks

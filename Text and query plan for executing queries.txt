@@ -1,0 +1,1 @@
+SELECT getdate() as "RunTime", st.text, qp.query_plan, a.* FROM sys.dm_exec_requests a CROSS APPLY sys.dm_exec_sql_text(a.sql_handle) as st CROSS APPLY sys.dm_exec_query_plan(a.plan_handle) as qp order by CPU_time desc

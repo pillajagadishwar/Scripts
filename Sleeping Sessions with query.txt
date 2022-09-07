@@ -1,0 +1,16 @@
+select ses.session_id,scon.session_id,connect_time,protocol_type,net_packet_size,net_transport,node_affinity,
+login_name,nt_domain,db_name(dbid) as DatabaseName,auth_scheme,client_net_address,host_name,
+ses.program_name,text as LastBatch,SES.status,scon.connect_time,ses.login_time
+,last_request_start_time,last_request_end_time ,
+(getdate()-last_request_start_time) as 'Tim since Last Batch',getdate() as 'Current Time',SES.unsuccessful_logons,SES.total_elapsed_time
+       ,last_read,last_write,last_successful_logon,last_successful_logon,cpu_time,SES.memory_usage,ses.lock_timeout
+             ,transaction_isolation_level,*--,open_transaction_count
+      from sys.dm_exec_connections  Scon 
+left join sys.dm_exec_sessions as SES on Scon.session_id=SES.session_id
+outer apply sys.dm_exec_sql_text(Scon.most_recent_sql_handle) as q
+--where  program_name like '%jdbc%'
+--where   login_name='webaccess' and SES.session_id=61-- and SES.session_id=78 --or login_name='GCSS_IM_MN'    
+--and status='running'
+--where db_name(q.dbid)='reconnet' 
+--where login_name='EverestDB'
+order by ses.session_id 

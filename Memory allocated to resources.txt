@@ -1,0 +1,10 @@
+select getdate(), type, sum(pages_kb/1024) as pages_MB
+from sys.dm_os_memory_clerks
+where type in ('MEMORYCLERK_SQLOPTIMIZER' ,'MEMOBJ_EXECOMPILETEMP')
+group by type --44168--
+
+
+select sum(pages_in_bytes/1024), type from sys.dm_os_memory_objects
+where type = 'MEMOBJ_EXECCOMPILETEMP'
+group by type
+--45227704--

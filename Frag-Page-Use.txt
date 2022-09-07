@@ -1,0 +1,23 @@
+-- Limited
+
+SELECT DB_NAME(database_id) AS [Database Name], OBJECT_NAME(ps.OBJECT_ID) AS [Object Name], 
+i.name AS [Index Name], ps.index_id, ps.index_type_desc,
+ps.avg_fragmentation_in_percent, ps.fragment_count, ps.page_count
+FROM sys.dm_db_index_physical_stats(DB_ID(),NULL, NULL, NULL ,'LIMITED') AS ps
+INNER JOIN sys.indexes AS i WITH (NOLOCK)
+ON ps.[object_id] = i.[object_id] 
+AND ps.index_id = i.index_id
+WHERE database_id = DB_ID()
+AND page_count > 2500
+ORDER BY avg_fragmentation_in_percent DESC OPTION (RECOMPILE);
+
+
+-- Detailed
+
+SELECT DB_NAME(database_id) AS [Database Name], OBJECT_NAME(i.OBJECT_ID) AS TableName,
+i.name AS IndexName, indexstats.index_type_desc, indexstats.fragment_count, indexstats.page_count,
+indexstats.avg_fragmentation_in_percent
+FROM sys.dm_db_index_physical_stats(DB_ID(), NULL, NULL, NULL, 'DETAILED') indexstats
+INNER JOIN sys.indexes i ON i.OBJECT_ID = indexstats.OBJECT_ID
+AND i.index_id = indexstats.index_id
+--WHERE indexstats.avg_fragmentation_in_percent > 20

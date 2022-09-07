@@ -1,0 +1,29 @@
+SELECT user_name,
+b.type as type,
+case (b.type) 
+when 'D' then 'Full database'
+when 'I' then 'Differential database'
+when 'L' then 'Log'
+when 'F' then 'File or filegroup'
+when 'G' then 'Differential file'
+when 'P' then 'Partial'
+when 'Q' then 'Differential partial'
+Else NULL End As type_desc,
+physical_device_name,
+database_name,
+name,
+backup_start_date,
+backup_finish_date,
+cast(backup_size/1024/1024 as int) AS BackupSizeMB,
+database_creation_date,
+begins_log_chain,
+first_lsn,
+last_lsn,
+checkpoint_lsn,
+database_backup_lsn
+
+FROM msdb.dbo.backupset b JOIN msdb.dbo.backupmediafamily m 
+
+ON b.media_set_id = m.media_set_id WHERE database_name not in ('master','model','msdb','distribution') and type <> 'l'
+--and database_name = db_name()
+ORDER BY backup_start_date DESC

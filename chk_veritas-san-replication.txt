@@ -1,0 +1,2 @@
+pairdisplay.exe -g BCDR_CA01 -I50 -fxec –CLI
+pairdisplay.exe -g BCDR_CA02 -I50 -fxec ?CLI
