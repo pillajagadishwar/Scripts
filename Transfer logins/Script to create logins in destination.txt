@@ -1,0 +1,5 @@
+select 'EXEC sp_help_revlogin ''' + m.name + ''''--, m.sid  
+from master..syslogins m
+join [db_name]..sysusers c on m.sid=c.sid
+where c.islogin=1 and c.hasdbaccess=1
+
