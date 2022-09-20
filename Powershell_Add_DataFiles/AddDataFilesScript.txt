@@ -1,0 +1,52 @@
+#[string[]]$serverlist = Get-Content -Path "C:\Users\jagadishwar_pilla\Desktop\Dell Backup\Desktop\Jagadish\Process Docs\Powershell_Add_DataFiles\Server_List.txt"
+[string[]]$Databaselist = Get-Content -Path "C:\Users\jagadishwar_pilla\Desktop\Dell Backup\Desktop\Jagadish\Process Docs\Powershell_Add_DataFiles\Databases.txt"
+
+#foreach($server in $serverlist)
+#{
+ foreach ($DB in $Databaselist)
+{​​​
+write-host $DB
+$Datafile1=$DB+'_data2'
+$Datafile2=$DB+'_data3'
+$Datafile3=$DB+'_data4'
+$BackupPath='C:\Program Files\Microsoft SQL Server\MSSQL15.MSSQLSERVER\MSSQL\Backup\'
+$Today=Get-Date -Format "MMddyyyyHHmm"
+$BackupFileName=$DB+$Today
+$BackupLocation=$BackupPath+$BackupFileName+'.bak'
+
+#Full Backup
+
+Invoke-Sqlcmd -serverinstance $server -Database $DB -Query "
+
+Backup DATABASE [$DB] TO  DISK = '$BackupLocation' WITH NOFORMAT, NOINIT,  NAME = N'[$DB]-Full Database Backup', SKIP, NOREWIND, NOUNLOAD, COMPRESSION,  STATS = 10
+GO"
+
+Write-host "Backup completed successfully on $DB"
+
+
+#Add Data files
+
+Invoke-Sqlcmd -serverinstance $server -Database $DB -Query "
+
+ALTER DATABASE [$DB] ADD FILE ( NAME = '$Datafile1', FILENAME = N'C:\Program Files\Microsoft SQL Server\MSSQL15.MSSQLSERVER\MSSQL\DATA\$Datafile1.ndf' , SIZE = 102400KB , FILEGROWTH = 10%) TO FILEGROUP [PRIMARY]
+go
+
+ALTER DATABASE [$DB] ADD FILE ( NAME = '$Datafile2', FILENAME = N'C:\Program Files\Microsoft SQL Server\MSSQL15.MSSQLSERVER\MSSQL\DATA\$Datafile2.ndf' , SIZE = 102400KB , FILEGROWTH = 10%) TO FILEGROUP [PRIMARY]
+go
+
+ALTER DATABASE [$DB] ADD FILE ( NAME = '$Datafile3', FILENAME = N'C:\Program Files\Microsoft SQL Server\MSSQL15.MSSQLSERVER\MSSQL\DATA\$Datafile3.ndf' , SIZE = 102400KB , FILEGROWTH = 10%) TO FILEGROUP [PRIMARY]
+go"
+
+Write-host "Data files addd successfully on $DB"
+
+Invoke-Sqlcmd -serverinstance $server -Database $DB -Query "
+
+Exec sp_changedbowner 'sa'
+go"
+
+
+Write-host "DBOnwer changed to SA on $DB"
+
+}
+#}
+

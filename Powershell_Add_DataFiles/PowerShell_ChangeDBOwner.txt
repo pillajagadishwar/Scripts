@@ -1,0 +1,16 @@
+
+[string[]]$Databaselist = Get-Content -Path "D:\PowerShell\Databases.txt"
+
+#foreach($server in $serverlist)
+#{
+ foreach ($DB in $Databaselist)
+{​​​
+
+
+Invoke-Sqlcmd -serverinstance AUSPWSP13SQL1 -Database $DB -Query "
+
+exec sp_changedbowner 'sa'
+"
+
+}
+#}
