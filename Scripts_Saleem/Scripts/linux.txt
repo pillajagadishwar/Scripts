@@ -1,0 +1,1406 @@
+History of Unix:-
+=================
+
+1960+
+
+ AT&T - Bell Labs
+ IBM
+ Sun
+ Project MAC
+ MIT                  
+
+ MULTICS - Main Frames
+
+ Developer "C" re-wrote using "C"   => UNICS
+
+ AT&T   UNIX
+ BSD    UNIX
+ SVR4   UNIX
+
+ ANSI
+ POSIX
+
+Unix Flavours:-
+===============
+ IBM - AIX
+ Sun - Solaris/SunOS
+ HP  - HP-UX
+
+
+Rewrote Unix for PC-ARCH - LINUX
+
+Linux Distributions:-
+======================
+Redhat - Linux  
+Suse   - Linux
+Ubuntu - Linux
+Mandrake Linux
+Cent OS
+Fedora Project   ( open source )
+
+
+Unix Arch:-
+===========
+H/w
+Kernel  = Memory/Device/File/Process/Network
+Application  & Core Utils
+Shell - 
+
+Unix Shells
+ Bourne Shell - sh
+ Korn Shell   - ksh  ( default Shell )
+ C Shell      - csh
+
+Linux shell
+ Bourne Against Shell  (bash)  (default shell)
+
+
+Major Feature offered by the shell
+  1) User Interface
+  2) Command Processing
+
+
+How will i know, am i using unix/linux ?
+----------------------------------------
+   uname
+   uname -a
+
+Display the current shell name ?
+--------------------------------
+   echo $0
+
+to display all the installed Shells:-
+-------------------------------------
+   cat /etc/shells
+
+to display the arch type ie 32/64 bit:-
+---------------------------------------
+   arch
+
+to display the CPU information:-
+--------------------------------
+   cat /proc/cpuinfo
+
+to display the OS name:-
+------------------------
+   cat /proc/version
+   OR
+   cat  /etc/redhat-release
+
+to display u r user id:- ( Effective userid)
+------------------------
+   id
+ 
+Unix Users:-
+=============
+   root          - sys admin
+   group owner   - Group admin
+   end user      - app user/developers
+
+Unix Files:-
+============
+   Ordinary File
+   Directory File
+   Block Device File
+   Char Device File
+   FIFO Files
+   Socket File
+   Symbolic Link Files
+
+
+Login Sequence:-
+================
+  1) Login Shell
+  2) Password shell -
+  3) Auth   -  /etc/passwd     (user infor is stored )
+               /etc/shadow     (actual password is stored)
+  4) Create a Terminal
+  5) Execute a Global Shell Script  ie /etc/profile
+  6) Execute a User Specific Shell Script ie .profile
+  7) Shell Prompt
+
+Note:
+User Specific Shell Script depends upon ur default SHELL
+ if ur default shell is ksh then profile is ".profile" 
+ if ur default shell is bash then profile is ".bash_profile"
+ if ur default shell is csh then profile is ".login"
+
+
+General Commands:-
+==================
+ whoami - display login name 
+ who    - display all the logged user details
+ finger - display real name of the user
+ date   - display the & time
+ cal    - display calendar
+ ls     - list the files
+ ps     - list the processes
+ pwd    - print working directory
+ clear  - clear the screen
+
+1) cal can display calendar from year 1 to 9999
+2) cal  8  1947
+3) cal  1752
+4) cal -j
+5) date +%D
+6) date +%T
+7) date +"%d %m %y"
+8) date +"%H %M %S"
+9) ls -l
+   ls -a  display hidden files & normal files
+   ls -i  display the inode numbers
+   ls -p  display dir with suffixed with (/)
+   ls -lt
+
+10) ps -l
+
+
+Unix Help Pages:-
+================= 
+  man command
+  info command
+
+ex:
+  man date
+
+File Operations:-
+=================
+
+How to create a file:-
+----------------------
+  cat  >  one.txt
+  type the data
+  which will be stored
+  in one.txt
+  cntrl + D
+
+How to view the contents of the file:-
+--------------------------------------
+  cat  one.txt
+ 
+How to delete the file:-
+-------------------------
+  rm  one.txt
+
+How to rename a file:-
+-----------------------
+  mv  one.txt  new.txt
+
+File System:-
+=============
+ Unix - UFS
+ AIX  - JFS
+ Sun  - ZFS
+ Linux- EXT4FS
+
+
+
+/dev  - stores all the device drivers
+/bin  - external OS Commands
+/usr  - installed s/w or libs
+/lib  - Standard "C" libaray
+/home - each users working directory will be under this dir
+/boot - kernel image
+/sbin - sys admin commands
+/temp - universal read write for any user
+/proc - stores kernel data structure info
+/var  - variable size - logfile,mails,webserver
+/mnt  - default mount points to external storage devices
+/root - default working directory for sys-admin
+
+
+How to display the IP-Address of the Server:-
+---------------------------------------------
+ ifconfig
+ or
+ /sbin/ifconfig
+
+
+See Later:
+  Sticky Bit
+  Set UID/Set GID Bit
+
+
+Dir Operations:-
+================
+
+>> mkdir  dirs  - create a directory
+
+>> rmdir  dirs  - remove Empty Directories
+
+>> rm -ir  dir  - remove Non-Empty Directory
+
+>> cd  dir      - change the directory
+
+   cd  path
+   cd  ..    = move to parent directory
+   cd  /     = move to root directory
+   cd        = move to users home directory
+   cd ~      = move to users home directory
+   cd -
+
+
+PAth:-
+=======
+  Absolute path - starts from root directory i.e  /
+  Relative path - starts from current directory
+
+Copy Commands:-
+===============
+  cp  filename/s  directory
+
+
+1) There is a file named "one.txt" in /root  directory
+   & we are in /root directory.
+   copy this file from current directory to "B" directory
+
+  cp  one.txt  temp/progs/SCR/A/B
+  cp  one.txt  ./temp/progs/SCR/A/B
+  cp  one.txt  /root/temp/progs/SCR/A/B
+
+2) we are in /root/temp/progs/Java/app & there is a 
+   file named "new.txt" copy this file to /root directory
+
+   cp  new.txt  ~
+   cp  new.txt  /root
+   cp  new.txt  ../../../../../
+
+
+3) There is a file named "two.txt" in /root/temp/progs/C/lib
+   & we are in /root/temp/progs/Cpp/old
+   copy this file to the current directory
+
+   cp /root/temp/progs/C/lib/two.txt  .
+   cp ~/temp/progs/C/lib/two.txt  .
+   cp ../../C/lib/two.txt   .
+
+
+Q1) When i copy a file does the file attributes change ?
+    yes
+
+    file attributes should not be changed ?
+    cp -p  filename  dir
+
+Q2) Can i copy a Directory ?
+    yes
+
+    Ans:  cp -r  Dir1  Dir2
+
+
+Move Commands:-
+===============
+  mv  filename/s  directory
+
+
+Q3) Can i move a directory ?
+    yes
+    mv  Dir1  Dir2
+
+IF "Dir2" does't exists what happens ?
+IF "Dir2" already exists what happens ?
+
+
+Changing the file access permission:-
+=====================================
+who can change the permission of a FILE
+  >> owner
+ >> root
+ >> group owner
+
+
+  chmod  ugoa +/-/= rwx   filename
+
+Symbolic method:-
+-----------------
+ chmod  u+x  new.txt
+ chmod  u-r  new.txt
+ chmod  u=rw  new.txt
+ chmod  a+x  new.txt
+
+
+ chmod  +t   directory   ( Set Sticky Bit )
+ chmod  u+s  filename    ( Set SUID Bit )
+
+Octal method:-
+--------------
+
+set read/write for the owner
+set read & Execute for grp
+set read for others
+
+chmod  654  filename
+
+
+How to change the permission of all the file & Dir
+ chmod  -R  741  dir
+
+
+umask
+
+
+Only root user can issue these cmds:-
+=====================================
+ to change the owner of the file:  chown
+ to change the group of the file:  chgrp
+
+
+==============================================================
+Linking Files:-
+===============
+ Hard Link:-
+ -----------
+  ln  one.txt  two.txt
+
+ works with Inode Number
+
+ Soft Link:-
+ -----------
+  ln  -s   one.txt    file1
+
+ works on the filename
+
+=============================================================
+I want to know which all the files are linked to 
+one.txt
+
+$ ls -l  one.txt
+
+-rwxr--r--r--  25  root  root  2 may 19:32  one.txt
+
+=============================================================
+ Search for a file in UNIX
+     locate  filename
+     find & xargs
+
+Find Command:-
+==============
+ >> search for the file based on file attributes
+ >> recursive
+options					actions
+-------					-------
+type of file   -type  f/d
+permissions    -perm  777		-ls    long list
+owner          -user  username		-print print path
+group          -group groupname		-exec  
+size           -size  1G   -1G  +1G	-ok   
+date & time    -mtime  1  +1  -1
+name           -name
+
+find  path  -options   -action
+Delete all .tmp file from FS
+ find /  -type f  -name "*.tmp"  -exec rm {} \;
+ OR
+ find / -type f  -name "*.tmp" | xargs rm
+
+Copy all .txt files to directory /tmp/user1 from my login
+ find ~ -type f -name "*.txt" -exec cp {}  /tmp/uuser1 \;
+
+Long list all the file size > 1GB
+ find ~  -type f  -size +1G  -ls
+
+Display all the executable .sh files in my login
+ find ~  -type f -perm u+x0  -name "*.sh"
+
+display all the directories which has full permission in FS
+ find  /   -type  d   -perm  777
+
+search for all a.out files & grant execute perm for all
+ find / -type f -name "a.out" -exec chmod a+x {} \;
+
+Note:
+
+difference b/w -exec &  -ok action
+ -exec is non-interactive
+ -ok   is interactive
+
+=============================================================
+Command Piping:-
+================
+ Cmd1 | Cmd2 | Cmd3
+
+
+Unix Filters:-
+==============
+ wc   = word count
+
+ wc one.txt
+ wc -l one.txt    (display only lines)
+ wc -w one.txt    (display only words)
+ wc -c one.txt    (display only chars)
+
+See later
+ wc -L one.txt   
+ wc -b one.txt
+
+Examples:-
+==========
+who | wc -l
+ls | wc -l
+ls *.txt | wc -l
+
+
+ more display the output page by page ( interactive cmds ) 
+ less display the output page by page ( interactive cmds )
+
+  ls -l | more  - go only forward
+  
+  ls -l | less  - move forward/backward
+  
+Note: type "q" to quit out of less command
+
+ head  - u need to select from the top of the file
+   
+   head -n5  one.txt
+   head -5 one.txt
+   head -1 one.txt
+
+
+  head -c1
+
+  tail -c1
+
+ tail  - u need to select from the bottom of the file
+
+   tail -n5  one.txt
+   tail -5 one.txt
+   tail -1 one.txt
+
+
+Note:
+  echo "Hello"    - last char is \n
+  echo -n "Hello" - there is no "\n" at the last
+
+
+Note:  tail -f  some.log   ( Interactive command )
+                           ( Dynamic Link b/w file & Console)
+
+
+-------------------------------------------------------------
+ sort
+
+  sort  emp.txt   ( First col based on ASCII order )
+
+  sort -k2 emp.txt ( second col -ASCII)
+
+  sort -k3 emp.txt ( third col -ASCII)
+
+  sort -n  -k4 emp.txt ( fourth col -NUMERIC - asc order)
+
+  sort -n -r -k4 emp.txt ( fourth col -NUMERIC - desc order)
+
+  sort -t"|" -n -r -k4  newemp.txt
+ 
+  -b         ignore multiple spaces
+  -n         numeric sort
+  -r         reverse order
+  -k2        sort on second field
+  -t "char"  specify the delimiter, if it is other than space
+  -o file    output will be captured in said "file"
+
+-------------------------------------------------------------
+ cut - Extract fields or chars
+
+ cut -options  filename
+
+ -c'n'    cuts char by char
+ -f'n'    cuts field by field
+ -d char  specify the delimiter if it is other than TAB
+
+
+ex
+  echo "Hello" | cut -c1
+  echo "Hello" | cut -c1-3
+  echo "Hello" | cut -c1,3
+
+ex:
+  echo "a=b=c=d" | cut -d"="  -f2
+
+  cut -d" " -f4  emp.txt
+
+-------------------------------------------------------------
+ tr = translate from one form to another form
+
+
+ ex:
+    echo "a,b,,,c,,,d" | tr -s "," | cut -d"," -f3
+
+ ex:
+    date +%T |  tr  ":"  " " | wc -w
+
+
+1) Display the emp-name who is drawing highest salary
+
+2) Display the emp-name & his salary of who is drawing
+   lowest salary
+
+3) display the mtime of a directory named "new"
+
+4) display the name & size of the file "emp.txt"
+
+5) from ls *.txt  display only the filename without extension
+
+6) from ls *.* output display only extensions of the filename
+
+
+-------------------------------------------------------------
+ paste
+
+  cat  emp.txt  new.txt
+
+  paste  emp.txt   new.txt
+ 
+  cut -d" " -f1 emp.txt  >  a.txt
+  cut -d" " -f2 emp.txt  >  b.txt
+  paste b.txt  a.txt  > temp.txt
+
+-------------------------------------------------------------
+Text Editor:-
+=============
+
+                     Editors  
+
+ Interactive editors           Non-interactive editors
+
+  vi/vim			  sed
+  emacs				  ed
+
+
+Diff modes in Vi editor:-
+-------------------------
+ Command Mode
+ Insert/Append Mode
+ Replace Mode
+ Colon Mode
+ Visual Mode
+
+
+To open a vi editor:-
+---------------------
+   vi  filename 
+  
+
+To Save & Exit the vi editor:-
+-------------------------------
+   ESC :wq!
+   ESC :wq
+   ESC :x   (truncate)
+
+To Quit Without saving:-
+------------------------
+   ESC  :q!
+
+To Save the Changes:-
+---------------------
+   ESC  :w
+
+
+Try these commands only in command mode:-
+-----------------------------------------
+Deletion commands:-
+-------------------
+      dd   - delete the current line
+  'n' dd   - delete n lines from the current line
+
+Cut & paste:-
+-------------
+  ndd  - cut 'n' lines  
+  np   - paste 'n' times
+  nP   - paste 'n' times
+
+Copy & paste:-
+-------------
+  nyy  - copy 'n' lines  
+  np   - paste 'n' times
+  nP   - paste 'n' times
+
+Find a text within a file:-
+----------------------------
+ /text   - find from top to bottom
+ ?text   - find from bottom up 
+
+ n       - find next
+ N       - find previous
+
+ to remove the highlight
+  :set nohlsearch
+
+Search & replace a word in a file:-
+-----------------------------------
+ :%s/hello/hai/gi    ( without confirmation )
+
+ :%s/hello/hai/gic   ( with confirmation )
+
+ :1,20 s/hello/hai/gi ( apply for first 20 lines )
+
+ :20,$ s/hello/hai/gi ( from 20th line to End Of File )
+
+
+Set the line number:-
+---------------------
+   :set  nu
+
+Reset the line number:-
+-----------------------
+   :set nonu
+
+You want to goto a specific line:-
+----------------------------------
+   :1
+
+
+:abbr in  india
+
+:colorscheme  blue
+:colorscheme  default
+
+
+How to work with multiple files:-
+---------------------------------
+1) vim  1.txt
+2) :vsplit 2.txt 
+   :split 3.txt
+  :split 4.txt
+
+3) cntrl + W  up/down/left/right
+   (move from one window to another )
+
+4) :wqa  ( Save & Exit All  )
+ 
+
+=============================================================
+ join
+
+   join -1 1  -2 1  data.txt  dep.txt
+
+note:
+ pre-req both the files should be sorted
+ based on appro merge field
+
+
+=============================================================
+ uniq :- to extract duplicates / uniques  from a file
+         file should be sorted
+
+ Syntax:
+           uniq  -options  filename
+  
+            -u  display only uniques
+            -d  display only duplicates
+            -c  display count of repeatations
+ 
+
+extract the dept field from emp.txt
+& 
+then sort it
+& 
+then uniq -c
+
+cut -d" " -f2 emp.txt | sort | uniq -c
+
+
+1) each user has logged how many times ?
+
+ who | cut -d" " -f1 | sort  | uniq -c
+
+2) Command to find how many files & how many firs are there
+ 
+ ls -l | cut -c1 | sort | uniq -c
+
+3) how many files are there with each extension
+
+ ls *.* | cut -d"." -f2 | sort | uniq -c
+
+=============================================================
+Regex-Metachars
+
+  .     =  a character  
+  []    =  range of chars
+  ^     =  line starts with
+  $     =  line ends with
+  *     =  zero/more
+  ?     =  zero/one
+  +     =  one/more
+  {m,n} =  repeatative operator
+  |     =  alternative
+
+
+
+varun
+arun
+tarun
+
+[vt]?arun
+
+
+matching
+match
+
+ match(ing)?
+
+
+singing
+ringing
+hanging
+   (si|ri|ha)nging
+
+pre-sales
+pre sales
+presales
+
+ pre[\- ]?sales
+
+
+presales
+cashsales
+creditsales
+  
+   (pre|cash|credit)sales
+
+
+line ends with odd no
+ [13579]$
+
+
+line starting with other than number
+ ^[^0-9]
+
+
+line starts with "a"
+followed by zero/more any char
+line ends with "a"
+
+  ^a.*a$
+
+
+user enters date
+   dd-mm-yy
+   dd-mm-yyyy
+
+  ^[0-9]{1,2}-[0-9]{1,2}-([0-9][0-9]){1,2}
+
+
+hari
+haari
+haaari
+
+    ha{1,3}ri
+
+
+hari
+haari
+haaaaaaaaaaaaaaaaaaaaaaaaaaaari
+(there is not limit for "a")
+
+ ha+ri
+ ha{1,}ri
+ haa*ri
+
+
+ line ends with $
+
+ \$$
+
+
+
+presales
+pre sales
+pre  sales
+pre   sales
+(unlimited spaces )
+
+  pre *sales
+
+
+============================================================
+grep   - supports only BREs
+egrep  - supports BREs & EREs 
+fgrep  - doest support REs
+
+
+syntax:
+    grep -options  "pattern"   filename
+
+    -i   ignore case
+    -n   display the matching line number
+    -c   display how many lines are matched
+    -w   match exact words
+    -v   display all the line which does't match the pattern
+
+1) display all the emps working for sales dept ?
+    grep -iw "sales"  emp.txt
+
+2) How many emps are not working for sales dept ?
+    grep -viw "sales"  emp.txt
+
+3) display all the emps working for sales or accts dept ?
+    egrep -iw "(sales|accts)"  emp.txt
+   
+4) from ls -l output display only the directories ?
+     ls -l | grep "^d"
+
+5) grep "a"  *.*  matching filenames
+   I Dont need the file contents
+
+    grep -l "a" *.* 
+
+6) from /etc/passwd file display my default shell
+                                    and home directory
+   grep "^root:" /etc/passwd | cut -d":" -6,7
+ 
+7) from who output display users working on termianl
+   pts/1 pts/3  pts/5
+
+    who | grep -w "pts/[135]"
+
+8) display the blank lines with line number
+
+    grep -n  "^$"  sample.txt
+
+=============================================================
+ cmp - compares two file contents char by char
+       and stops when it finds a difference
+
+   cmp  file1  file2
+
+ output will at which line & which byte there was difference
+
+=============================================================
+ diff - code reviews
+
+    diff file1  file2
+
+ displays all the differences b/w two files
+  ie  a - added
+      d - deleted
+      c - changed
+
+=============================================================
+ comm  - commonality b/w two columns
+       - it should be sorted
+
+  comm file1  file2
+
+ output will be in three columns
+
+  first column unique in the first file
+  secnd column unique in the secnd file
+  third column common b/w two files
+
+
+=============================================================
+ tee pipe
+
+>>  C1 | C2 | C3  | tee out.txt  |  C4
+ 
+>>  sort emp.txt  |  tee out.txt
+
+=============================================================
+Process related Commands:-
+==========================
+ What is a process ?
+ >> program under execution is termed as process
+ >> if we execute a command, os creates a process
+
+Start a Foreground  :  Command
+Start a BAckground  :  Command  &
+
+How to terminate a process:  kill PID     or Cntrl + C
+How to KILL A process     :  kill -9 PID
+  
+How can start a process which indepdent of a TERMINAL ?
+  nohup sh sam.sh > out.txt  &
+
+How to start a process with lower priortity
+  nice -19  sh sam.sh  &
+
+==============================================================
+Shell Scripts:-
+===============
+
+ ENV variables:-
+ -----------------
+   echo $PATH
+   echo $SHELL
+   echo $TERM
+   echo $PS1
+   echo $LOGNAME
+   echo $HOME
+   echo $PWD
+
+How to set the path
+   PATH=$PATH:/home/user1/project/bin
+
+
+SPECIAL VARIABLEs:-
+-------------------
+   echo $$  # display the PID of the current process
+   echo $!  # display the PID of the last background process
+   echo $?  # display exit status of last process
+
+Note:
+ when $? is 0 then previous process was sucess
+      $? is Non-Zero then prev process has failed
+
+
+User Defined Variables:-
+------------------------
+   Numeric variable
+     a=10     # valid
+
+     a = 10   # invalid
+     a= 10    # invalid
+     a =10    # invalid
+
+   Non-Numeric variable
+     name='hari prasad'
+
+
+Output statement in a shell script:-
+------------------------------------
+  echo "statement"
+  echo 'statement'  # WYCWYG
+
+Input statement/get a value from the keyboard:-
+------------------------------------------------
+  read  a
+
+  read a b
+
+
+My First Shell SCript:-
+=======================
+  1) script name should have an extension as ".sh"
+  2) first line of ur script should 
+     #! interpreter path
+  3) script should have execute permission
+
+
+prog2.sh
+=========
+#!/bin/bash
+
+echo "Enter your name : "
+read  name
+echo "Welcome to Shell Script $name"
+echo "       PID  = $$"  # display the PID of current shell
+echo "Script name = $0"  # script name
+
+Diff ways of executing the shell script:-
+==========================================
+ Method1:  bash  prog2.sh
+           or
+           sh  prog2.sh
+ 
+ Method2 :   ./prog2.sh
+ 
+============================================================
+
+Write a shell script  ie  "prog3.sh"
+
+to accept the First filename from the user
+to accept the Second filename from the user
+
+u have to create a duplicate copy of first file
+with name as second file
+
+then display the contents of first file
+then display the contents of secnd file
+
+sol:
+  echo "Enter the first filename : "
+  read file1
+  echo "Enter the second filename : "
+  read file2
+
+  cp  $file1  $file2
+
+  echo "first file contents are "
+  cat $file1
+
+  echo "Second file contents are "
+  cat $file2
+
+
+prog4.sh:-
+==========
+Write a script
+>>to accept two filenames from the user
+>>compare them char by char
+>>then display was it sucess/failure
+
+sol:
+  echo "Enter the first filename : "
+  read file1
+  echo "Enter the second filename : "
+  read file2
+
+  cmp  $file1  $file2  > /dev/null  
+                       # cmp is a command to compares 
+                       # two files char by char
+                           
+                       # > /dev/null is to suppress the output
+
+  echo "Result = $?"   # display 0 on sucess
+                       # display non-zero on failure
+
+I dont want any descrption
+=============================================================
+Prog5.sh:-
+==========
+ WRite script to 
+   >>accept the filename from the user
+   >>then display number of lines in that file
+
+Note:
+ u r program should display only no of lines
+ but not the filename
+
+sol:
+ 
+  wc -l $fname | cut -d" "  -f1
+  OR
+  cat $fname | wc -l
+
+
+I want the commands output to be captured in a shell
+variable
+ Command substitution
+ 
+  lines=`wc -l $fname | cut -d" "  -f1`
+  echo $lines
+
+prog6.sh:-
+==========
+ Write a script to accept two filename from the user
+ find how many lines are there in first file
+ find how many lines are there in secnd file
+ if the both the file have same no of lines
+   display "Equal"
+ else
+   display "UnEqual"
+
+
+prog7.sh:-
+==========
+
+echo "Enter the file1 : "
+read f1
+echo "Enter the file2 : "
+read f2
+cmp $f1 $f2  > /dev/null
+if [ $? -eq 0 ] 
+then
+    echo "Success"
+else
+    echo "Failure"
+fi
+
+
+prog8.sh:-
+==========
+Accept a file name from the user
+
+extract the first lines first word of the file 
+   & store it in $a
+extract the last lines first word of the file 
+   & store it in $b
+
+compare these two words and display appor message
+
+
+prog9.sh:-
+===========
+Accept the filename from the user
+display the first word 
+display the last word
+
+
+sample contents of my file:-
+----------------------------
+hello-world-of-unix-shell-bangalore
+
+first word is = hello
+last word is = bangalore
+
+
+sol:
+
+ echo "Enter the filename"
+ read f1
+ first=`cat $f1 | cut -d"-" -f1`
+ n=`cat $f1 | tr "-"  " " | wc -w`
+ last=`cat $f1 | cut -d"-" -f$n`
+
+ echo "$first"
+ echo "$last"
+
+=============================================================
+Diff ways of writing if-statement:-
+====================================
+
+1) if [ $a == $b ] ; then
+       echo "same"
+   else
+       echo "diff"
+   fi
+
+2) if test $a = $b
+   then
+       echo "same"
+   else
+       echo "diff"
+   fi
+  
+
+case statement:-
+================
+ echo "Enter your name : "
+ read name
+
+ # to extract the first char of the string
+ res=`echo $name | cut -c1`
+
+ case $res in
+   [aeiouAEIOU])  echo "Vowel"       ;;
+         *)  echo "Consonent"   ;;
+ esac
+
+sol:
+ echo "Enter the filename"
+ read fname
+ char=`ls -ld $fname | cut -c1`
+
+ case $char in
+   -)  echo "ordinary file"  ;;
+   d)  echo "directory file" ;;
+   *)  echo "special file"   ;;
+ esac
+
+=============================================================
+while loop:-
+============
+ i=1 
+ while  [  $i  -le  6  ]
+ do
+   echo "$i"
+   let i++
+ done
+
+prog10.sh:-
+===========
+str="abcdefghij"
+
+display only the alternate char of the above string
+
+a
+c
+e
+g
+i
+
+sol:
+ str='abcdefghijk'
+
+ #count no of character in a STRING
+ chars=`echo -n $str | wc -c`
+
+ i=1  # START of the loop
+ while [ $i -le $chars ]  # cond to stop the loop
+ do
+   echo "$str" | cut -c$i  # Extract the desired chars
+   let i=i+2               # interval
+ done
+
+
+==============================================================
+until loop:-
+============
+$?=1  # assum this
+
+until [ $? -eq 0 ]
+do
+  sleep 60
+  ping -c5 hostname > /dev/null
+done
+
+==============================================================
+for loop:-
+==========
+ex1:
+ for i  in  10 20 30 40 50
+ do
+   echo $i
+ done
+
+ex2:
+ for i in `seq 1 10`
+ do
+   echo $i
+ done
+
+
+Input is:-
+==========
+ str='hello'
+
+Output:-
+========
+ olleh
+
+sol:
+ str='hello'
+ n=`echo -n "$str" | wc -c`
+ for i in `seq $n -1 1`
+ do
+    echo "$str" | cut -c$i
+ done  
+==============================================================
+for((i=0;i<=10;i++))
+do 
+  echo $i
+done
+
+==============================================================
+sum=0
+for i in   `cat sales.txt | cut -d"=" -f2`
+do
+  let sum=sum+i
+done 
+echo $sum
+
+contents sales.txt
+===================
+north=40
+south=32
+east=89
+west=67
+
+Ans = 228
+
+==============================================================
+How to Compress the file :-
+===========================
+>> gzip filename.txt
+it will compress the orginal file & rename the orginal 
+file as filename.txt.gz
+
+>> gunzip filename.txt.gz
+it will de-compress the file
+
+>> zcat  filename.txt.gz
+display the contents of the compressed file
+
+
+How to tar a directory:-
+========================
+create a tar file: tar -cvf  backup.tar  foldername
+untar a file     : tar -xvf  backup.tar
+list tar file    : tar -tvf  backup.tar
+
+create a tgz file :  tar -gcvf backup.tgz  foldername 
+
+
+Basic System Adminstration:-
+============================
+ Disk Related commands:-
+ -----------------------
+    du
+    df
+    fdisk -l
+    swap
+ 
+ User management:-
+ ------------------
+ 1)   groupadd   developer
+      groupdel
+      groupmod
+
+ 2)   adduser -g developer   arun
+ 3)   deluser
+ 4)   moduser
+ 5)   #SET password to the user
+      passwd  arun
+
+ Network commands:-
+ ------------------
+   ifconfig
+   netstat
+   service  servicename  status
+
+
+rpm:-
+======
+ to install an RPM :  rpm -ivh  package.rpm
+ to query for avail:  rpm -q packagename
+ to list all       :  rpm -qa
+
+ to upgrade        :  rpm -Uvh  packagename.rpm
+ to uninstall      :  rpm -e   packagename
+
+yum:-
+=====
+ we need to have repository defined which contains
+ all the RPM files/packages in that location
+
+ yum install packagename
+ yum upgrade packagename
+ yum remove  pakagename
+ yum list
+ yum info
+
+=============================================================
+
+1)i have to search for a file in my file system
+  which has a word "hello$" within file contents
+
+  find  ~  -type f  -exec grep "hello\$" {}  \;
+  find  ~  -type f  | xargs  grep "hello\$"
+
+2) merge every two lines into one
+   cat new.txt | xargs -l2
+
+3) user inputs a username
+   u have to display the his ID
+                         homedir
+                         default shell
+ 
+  echo "Enter the username"
+  read user
+
+  cut -d":" -f1 /etc/passwd | grep -w "$user" 
+  if [ $? -eq 0 ]
+  then
+      echo Valid user
+  else
+      echo Invalid user
+  fi
+
+
+to debug the shell scripts:-
+-----------------------------
+   bash -xv  script
+
+
+Math operators:-
+================
+a=10
+b=20
+
+ 1)  let c=a+b             # works only in ksh/bash
+
+ 2)  c=`expr $a + $b`      # works only in bash/sh
+
+ 3)  ((c=a+b))
+
+
+=============================================================
+
+
+
+
+
+
+
+
+
+

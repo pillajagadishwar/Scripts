@@ -1,0 +1,260 @@
+/* ******* Listing of SQL Server sessions blocking other sessions
+   *******
+   ******* To retrieve the entire query, make sure that your TEXTSIZE parameter is
+   ******* large enough, and run
+   *******   SELECT [text] FROM sys.dm_exec_sql_text (<<sql_handle>>)
+******** */
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
+SET LOCK_TIMEOUT 500
+
+-- flatten Blocker/Blocked dependencies
+
+SELECT ses.session_id, qry.blocking_session_id,
+  CAST(0 AS bit) AS CyclicDependency,
+  qry.blocking_session_id AS initial_blocking_session_id
+INTO #thisListOfBlocked
+FROM sys.dm_exec_sessions ses
+INNER JOIN sys.dm_exec_requests qry
+  ON qry.session_id =ses.session_id
+WHERE ses.is_user_process =1
+  AND ses.status <>'sleeping' AND ses.session_id <>@@SPID 
+  AND qry.blocking_session_id >0
+
+IF (@@ROWCOUNT >0)
+BEGIN
+  CREATE CLUSTERED INDEX duh
+    ON #thisListOfBlocked (blocking_session_id)
+
+  WHILE (1=1)
+  BEGIN
+    UPDATE son
+      SET CyclicDependency =1
+    FROM #thisListOfBlocked son
+    INNER JOIN #thisListOfBlocked father
+      ON father.session_id =son.blocking_session_id
+    WHERE son.CyclicDependency =0
+      AND (  father.CyclicDependency =1
+          OR father.blocking_session_id =son.session_id
+          OR father.blocking_session_id =son.initial_blocking_session_id
+         )
+  
+    UPDATE son
+      SET son.blocking_session_id =father.blocking_session_id
+    FROM #thisListOfBlocked son
+    INNER JOIN #thisListOfBlocked father
+      ON father.session_id =son.blocking_session_id
+    WHERE son.CyclicDependency =0
+      AND father.CyclicDependency =0
+
+    IF (@@ROWCOUNT =0)
+      BREAK
+  END
+  
+  -- detail of Blocker sessions
+
+  SELECT
+    blk.[#sessions blocked],
+    ses.session_id AS [session],
+    ses.login_time AS [connection start],
+    ses.login_name AS [login],
+    CASE WHEN ses.program_name LIKE 'Microsoft SQL Server Management Studio%'
+         THEN '(user)'
+         WHEN ses.program_name LIKE 'Microsoft® Visual Studio®%'
+         THEN '(user)'
+         WHEN ses.program_name LIKE 'SQLAgent%'
+         THEN '(GTS batch job)'
+         WHEN ses.program_name ='Microsoft SQL Server Analysis Services'
+         THEN 'anonymous SSAS'
+         WHEN ses.program_name ='Microsoft SQL Server'
+         THEN 'anonymous SSIS'
+         WHEN ses.program_name ='.Net SqlClient Data Provider'
+         THEN 'anonymous .Net'
+         WHEN ses.program_name ='Microsoft SQL Server JDBC Driver'
+         THEN 'anonymous Java'
+         ELSE ses.program_name
+    END AS [program tag],
+    ses.host_name AS [host tag],
+    ses.status
+      +CASE WHEN qry.status is null
+            THEN ''
+            ELSE ' / ' +qry.status +' ' +qry.command
+       END AS [session/query status],
+    CASE WHEN qry.wait_time IS NULL OR qry.wait_time =0
+         THEN ''
+         ELSE qry.last_wait_type +' for last '
+              +CONVERT(varchar, CONVERT(decimal(6,1), qry.wait_time/1000.0)) + 's'
+              +CASE WHEN qry.wait_resource =''
+                    THEN ''
+                    ELSE ' on ' +qry.wait_resource
+               END
+    END AS [wait status],
+    ISNULL(DB_NAME(qry.database_id), '') AS [DB used],
+    CASE WHEN qry.lock_timeout IS NULL OR qry.lock_timeout =0
+         THEN ''
+         WHEN qry.lock_timeout =-1
+         THEN '(infin.)'
+         ELSE CONVERT(varchar, CEILING(qry.lock_timeout/1000.0)) + ' s'
+    END AS [lock timeout],
+    CASE WHEN qry.open_transaction_count IS NULL OR qry.open_transaction_count =0
+         THEN ''
+         ELSE CONVERT(varchar, qry.open_transaction_count)
+    END AS [transactions],
+    CASE WHEN qry.session_id IS null
+         THEN null
+         ELSE ses.last_request_start_time
+    END AS [query start],
+    CASE WHEN qry.total_elapsed_time >=3600000
+         THEN CONVERT(varchar, qry.total_elapsed_time/3600000) +'h '
+         ELSE ''
+    END
+     +CASE WHEN qry.total_elapsed_time >=60000
+           THEN CONVERT(varchar, (qry.total_elapsed_time%3600000)/60000) +'mn '
+           ELSE ''
+      END
+     +CONVERT(varchar, (qry.total_elapsed_time%60000)/1000) +'s'
+      AS [elapsed],
+    CONVERT(decimal(5,1), qry.cpu_time/1000.0) AS [CPU (s)],
+    qry.logical_reads AS [logical R],
+    qry.reads AS [physical R],
+    qry.writes AS [physical W],
+    CASE WHEN qry.sql_handle is null
+         THEN null
+         ELSE REPLACE(REPLACE(
+                  SUBSTRING(qrytxt.text, (qry.statement_start_offset/2) +1, 252),
+                  '  ',' '),
+                  '  ',' ')
+              +'...'
+    END AS [query (excerpt)],
+    CASE WHEN qry.sql_handle is null
+         THEN null
+         WHEN qrytxt.text like '%CREATE% PROCEDURE%'
+         THEN SUBSTRING(qrytxt.text, CHARINDEX(' PROCEDURE', qrytxt.text) +11, 64)
+         WHEN qrytxt.text like '%CREATE% FUNCTION%'
+         THEN SUBSTRING(qrytxt.text, CHARINDEX(' FUNCTION',  qrytxt.text) +10, 64)
+         ELSE ''
+    END AS [from procedure],
+    qry.sql_handle
+  FROM 
+   (SELECT blocking_session_id,
+      CASE WHEN SUM(CAST(CyclicDependency AS int)) >0
+           THEN '(cyclic)'
+           ELSE CONVERT(varchar, COUNT(*))
+      END AS [#sessions blocked]
+    FROM #thisListOfBlocked
+    GROUP BY blocking_session_id
+   ) blk
+  INNER JOIN sys.dm_exec_sessions ses
+    ON ses.session_id =blk.blocking_session_id
+  LEFT JOIN sys.dm_exec_requests qry
+    ON qry.session_id =ses.session_id
+  OUTER APPLY sys.dm_exec_sql_text(qry.sql_handle) qrytxt
+  ORDER BY
+    blk.[#sessions blocked] DESC,
+    ses.last_request_start_time
+    
+  -- detail of Blocked sessions
+
+  SELECT
+    qry.blocking_session_id AS [blocked by],
+    ses.session_id AS [session],
+    ses.login_time AS [connection start],
+    ses.login_name AS [login],
+    CASE WHEN ses.program_name LIKE 'Microsoft SQL Server Management Studio%'
+         THEN '(user)'
+         WHEN ses.program_name LIKE 'Microsoft® Visual Studio®%'
+         THEN '(user)'
+         WHEN ses.program_name LIKE 'SQLAgent%'
+         THEN '(GTS batch job)'
+         WHEN ses.program_name ='Microsoft SQL Server Analysis Services'
+         THEN 'anonymous SSAS'
+         WHEN ses.program_name ='Microsoft SQL Server'
+         THEN 'anonymous SSIS'
+         WHEN ses.program_name ='.Net SqlClient Data Provider'
+         THEN 'anonymous .Net'
+         WHEN ses.program_name ='Microsoft SQL Server JDBC Driver'
+         THEN 'anonymous Java'
+         ELSE ses.program_name
+    END AS [program tag],
+    ses.host_name AS [host tag],
+    ses.status
+      +CASE WHEN qry.status is null
+            THEN ''
+            ELSE ' / ' +qry.status +' ' +qry.command
+       END AS [session/query status],
+    CASE WHEN qry.wait_time IS NULL OR qry.wait_time =0
+         THEN ''
+         ELSE qry.last_wait_type +' for last '
+              +CONVERT(varchar, CONVERT(decimal(6,1), qry.wait_time/1000.0)) + 's'
+              +CASE WHEN qry.wait_resource =''
+                    THEN ''
+                    ELSE ' on ' +qry.wait_resource
+               END
+    END AS [wait status],
+    ISNULL(DB_NAME(qry.database_id), '') AS [DB used],
+    CASE WHEN qry.lock_timeout IS NULL OR qry.lock_timeout =0
+         THEN ''
+         WHEN qry.lock_timeout =-1
+         THEN '(infin.)'
+         ELSE CONVERT(varchar, CEILING(qry.lock_timeout/1000.0)) + ' s'
+    END AS [lock timeout],
+    CASE WHEN qry.open_transaction_count IS NULL OR qry.open_transaction_count =0
+         THEN ''
+         ELSE CONVERT(varchar, qry.open_transaction_count)
+    END AS [transactions],
+    CASE WHEN qry.session_id IS null
+         THEN null
+         ELSE ses.last_request_start_time
+    END AS [query start],
+    CASE WHEN qry.total_elapsed_time >=3600000
+         THEN CONVERT(varchar, qry.total_elapsed_time/3600000) +'h '
+         ELSE ''
+    END
+     +CASE WHEN qry.total_elapsed_time >=60000
+           THEN CONVERT(varchar, (qry.total_elapsed_time%3600000)/60000) +'mn '
+           ELSE ''
+      END
+     +CONVERT(varchar, (qry.total_elapsed_time%60000)/1000) +'s'
+      AS [elapsed],
+    CONVERT(decimal(5,1), qry.cpu_time/1000.0) AS [CPU (s)],
+    qry.logical_reads AS [logical R],
+    qry.reads AS [physical R],
+    qry.writes AS [physical W],
+    CASE WHEN qry.sql_handle is null
+         THEN null
+         ELSE REPLACE(REPLACE(
+                  SUBSTRING(qrytxt.text, (qry.statement_start_offset/2) +1, 252),
+                  '  ',' '),
+                  '  ',' ')
+              +'...'
+    END AS [query (excerpt)],
+    CASE WHEN qry.sql_handle is null
+         THEN null
+         WHEN qrytxt.text like '%CREATE% PROCEDURE%'
+         THEN SUBSTRING(qrytxt.text, CHARINDEX(' PROCEDURE', qrytxt.text) +11, 64)
+         WHEN qrytxt.text like '%CREATE% FUNCTION%'
+         THEN SUBSTRING(qrytxt.text, CHARINDEX(' FUNCTION',  qrytxt.text) +10, 64)
+         ELSE ''
+    END AS [from procedure],
+    qry.sql_handle
+  FROM 
+   (SELECT b.session_id
+    FROM #thisListOfBlocked b
+    LEFT JOIN #thisListOfBlocked bb
+      ON bb.session_id =b.blocking_session_id
+    WHERE bb.session_id IS null
+   ) blk
+  INNER JOIN sys.dm_exec_sessions ses
+    ON ses.session_id =blk.session_id
+  LEFT JOIN sys.dm_exec_requests qry
+    ON qry.session_id =ses.session_id
+  OUTER APPLY sys.dm_exec_sql_text(qry.sql_handle) qrytxt
+  ORDER BY
+    qry.blocking_session_id,
+    ses.last_request_start_time
+
+END
+
+-- clean-up
+
+DROP TABLE #thisListOfBlocked
+

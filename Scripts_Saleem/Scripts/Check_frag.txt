@@ -1,0 +1,38 @@
+SELECT OBJECT_NAME(OBJECT_ID), index_id,index_type_desc,index_level,
+avg_fragmentation_in_percent,avg_page_space_used_in_percent,page_count
+FROM sys.dm_db_index_physical_stats
+(DB_ID(N'AdventureWorksLT'), NULL, NULL, NULL , 'SAMPLED')
+ORDER BY avg_fragmentation_in_percent DESC
+
+
+**To find which indexes are not enabled with use page locks when accessing index***
+
+SELECT OBJECT_NAME(i.object_id) as TableName , name as IndexName  , allow_page_locks  
+
+ FROM sys.indexes as i  
+
+ WHERE ALLOW_PAGE_LOCKS = 0 
+
+
+
+
+Use gdat
+go
+
+
+SELECT object_name(IPS.object_id) AS [TableName], 
+   SI.name AS [IndexName], 
+   IPS.Index_type_desc, 
+   IPS.avg_fragmentation_in_percent, 
+   IPS.avg_fragment_size_in_pages, 
+   IPS.avg_page_space_used_in_percent, 
+   IPS.record_count, 
+   IPS.ghost_record_count,
+   IPS.fragment_count, 
+   IPS.avg_fragment_size_in_pages
+FROM sys.dm_db_index_physical_stats(db_id(N'gdat'), NULL, NULL, NULL , 'DETAILED') IPS
+   JOIN sys.tables ST WITH (nolock) ON IPS.object_id = ST.object_id
+   JOIN sys.indexes SI WITH (nolock) ON IPS.object_id = SI.object_id AND IPS.index_id = SI.index_id
+WHERE ST.is_ms_shipped = 0
+ORDER BY 1,5
+GO

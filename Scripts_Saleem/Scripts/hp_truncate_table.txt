@@ -1,0 +1,51 @@
+create procedure hp_truncate_table 
+
+     @tablename  varchar(128)
+
+,    @schemaname varchar(128)=NULL
+
+with execute as self, encryption
+
+as
+
+declare @schema varchar(128)
+
+select @schema = ISNULL(@schemaname, 'dbo')
+
+declare @SQL nvarchar(1000), @check varchar(5) = 'FALSE'
+
+select @check = 'TRUE' from sys.schemas where name = @schema
+
+if (@check = 'TRUE')
+
+begin
+
+    set @check = 'FALSE'
+
+    select @check = 'TRUE' from sys.objects where name = @tablename and [type] = 'U'
+
+end
+
+if (@check = 'TRUE')
+
+begin
+
+    select @SQL = 'truncate table ['+@schema+'].['+@tablename+']'
+
+    begin try
+
+        execute sp_executesql @SQL
+
+    end try
+
+    begin catch
+
+        print error_message()
+
+    end catch
+
+end
+
+else
+
+    print 'Table "'+@schema+'.'+@tablename+'" does not exist'

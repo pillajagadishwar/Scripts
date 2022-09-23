@@ -1,0 +1,110 @@
+/* ******* Listing of "busy" tables
+   *******  => SQL Server manages "shared read locks" for SELECT, 
+   *******     "intent" and "update locks" for INSERT-UPDATE-DELETE,
+   *******     "intent" and "schema modify locks" for ALTER etc.
+   *******  => lock requests than cannot be satisfied now are queued
+   *******  => there are 24 queues (1 per CPU core), "shared read locks"
+   *******     are set in just 1 queue, others are set on all queues;
+   *******     a SELECT on core 17 may block an UPDATE, that has already
+   *******     set it "intent lock" on cores 1-16, so that SELECTs starting
+   *******     on cores 1-16 are blocked while other SELECTs starting on cores
+   *******     17-24 will not be blocked (ain't that simple...?)
+   *******
+   ******* To retrieve the entire query, make sure that your TEXTSIZE parameter is
+   ******* large enough, and run
+   *******   SELECT [text] FROM sys.dm_exec_sql_text (<<sql_handle>>)
+******** */
+
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED
+SET LOCK_TIMEOUT 500
+
+SELECT
+  OBJECT_SCHEMA_NAME(busy_object_id) AS [Schema],
+  OBJECT_NAME(busy_object_id) AS [Locked object],
+  [Update lock?], [Lock status],
+  ses.session_id,
+  ses.[status]
+    +CASE WHEN qry.[status] is null
+          THEN ''
+          ELSE ' / ' +qry.[status] +' ' +qry.command
+     END AS [Session/query status],
+  CASE WHEN qry.blocking_session_id IS NULL OR qry.blocking_session_id =0
+       THEN ''
+       ELSE CONVERT(varchar, qry.blocking_session_id)
+  END AS [Blocked by],
+  CASE WHEN qry.[lock_timeout] IS NULL OR qry.[lock_timeout] =0
+       THEN ''
+       WHEN qry.[lock_timeout] =-1
+       THEN '(infinite)'
+       ELSE CONVERT(varchar, CEILING(qry.[lock_timeout]/1000.0)) + ' s'
+  END AS [Lock timeout],
+  ses.login_time AS [Connection start],
+  ses.login_name AS [Login],
+  CASE WHEN ses.program_name LIKE 'Microsoft SQL Server Management Studio%'
+       THEN '(user)'
+       WHEN ses.program_name LIKE 'Microsoft® Visual Studio®%'
+       THEN '(user)'
+       WHEN ses.program_name LIKE 'SQLAgent%'
+       THEN '(GTS batch job)'
+       WHEN ses.program_name ='Microsoft SQL Server Analysis Services'
+       THEN 'anonymous SSAS'
+       WHEN ses.program_name ='Microsoft SQL Server'
+       THEN 'anonymous SSIS'
+       WHEN ses.program_name ='.Net SqlClient Data Provider'
+       THEN 'anonymous .Net'
+       WHEN ses.program_name ='Microsoft SQL Server JDBC Driver'
+       THEN 'anonymous Java'
+       ELSE ses.program_name
+  END AS [program tag],
+  ses.[host_name] AS [host tag],
+  CASE WHEN ses.last_request_end_time <=ses.last_request_start_time
+       THEN ses.last_request_start_time
+       ELSE null
+  END AS [Current query start],
+  CASE WHEN qry.open_transaction_count IS NULL OR qry.open_transaction_count =0
+       THEN ''
+       ELSE CONVERT(varchar, qry.open_transaction_count)
+  END AS [transactions]
+FROM 
+ (SELECT
+    CASE WHEN lck.resource_type = 'OBJECT'
+         THEN lck.resource_associated_entity_id
+         ELSE p.[object_id]
+    END AS busy_object_id,
+    lck.request_session_id AS session_id,
+    MAX(CASE WHEN lck.request_mode ='Sch-M'
+             THEN 'Yes, DDL'
+             WHEN lck.request_mode like '%X'
+               OR lck.request_mode like '%U'
+             THEN 'Yes'
+             ELSE ''
+        END) AS [Update lock?],
+    CASE WHEN MIN(CASE WHEN lck.request_status ='WAIT'
+                       THEN 0
+                       ELSE 1
+                  END) =1
+         THEN 'Granted'
+         WHEN MAX(CASE WHEN lck.request_status ='WAIT'
+                       THEN 0
+                       ELSE 1
+                  END) =0
+         THEN '(pending)'
+         ELSE 'Partially granted'
+    END AS [Lock status]
+  FROM sys.dm_tran_locks lck
+  LEFT JOIN sys.partitions p
+    ON p.hobt_id =lck.resource_associated_entity_id
+  WHERE lck.resource_database_id =DB_ID()
+    AND lck.resource_type IN ('OBJECT','HOBT','KEY','PAGE','RID')
+  GROUP BY
+    CASE WHEN lck.resource_type = 'OBJECT'
+         THEN lck.resource_associated_entity_id
+         ELSE p.[object_id]
+    END,
+    lck.request_session_id  
+ ) busy
+LEFT JOIN sys.dm_exec_sessions ses
+  ON ses.session_id =busy.session_id
+LEFT JOIN sys.dm_exec_requests qry
+  ON qry.session_id =ses.session_id
+ORDER BY 1,2,3 DESC

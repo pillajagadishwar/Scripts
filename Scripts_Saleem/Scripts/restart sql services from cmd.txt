@@ -1,0 +1,47 @@
+net stop mssql$instancename
+
+net start mssql$instancename
+
+
+
+
+
+NET STOP SQLSERVERAGENT
+NET STOP MSSQLSERVER
+NET START MSSQLSERVER
+NET START SQLSERVERAGENT
+
+
+
+http://vyaskn.tripod.com/restart_sql_server_service.htm
+
+
+
+net start "SQL Server Agent (MSSQLSERVER)" (Default instance) or net start SQLSERVERAGENT
+
+net start "SQL Server Agent(instancename)" or net start SQLAgent$ <instancename>
+
+
+
+
+
+Named instance
+=============
+
+@ECHO OFF
+NET STOP SQLAgent$ <instancename>
+NET STOP MSSQL$<instance>
+NET START MSSQL$<instance>
+NET START SQLAgent$ <instancename>
+
+Default instance
+================
+NET STOP SQLSERVERAGENT
+NET STOP MSSQLSERVER
+NET START MSSQLSERVER
+NET START SQLSERVERAGENT
+
+
+
+
+

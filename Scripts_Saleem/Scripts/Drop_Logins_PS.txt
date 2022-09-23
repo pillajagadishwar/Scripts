@@ -1,0 +1,246 @@
+<#
+.SYNOPSIS 
+ Drop Login from SQL Server Instance
+
+.DESCRIPTION 
+ Drops Windows User or SQL Login from all user databases and from the SQL Server instance
+ 
+ SQLServers.txt file must contain valide SQL Server name and instance name i.e. SQLServer01\Instance01
+ 
+ Logins.txt file must contain list of users to be dropped from SQL Server instances from SQLServers.txt
+ 
+.PARAMETER 
+ serverlist loginlist
+   
+.EXAMPLE
+ 
+ Drop-Logins -serverlist "P:\Powershell\SQLServer.txt" -loginlist "P:\Powershell\Login.txt"
+ 
+ powershell.exe -file "P:\Powershell\Drop-Logins\Drop-Logins.ps1" ".\SQLServers.txt" ".\Logins.txt"
+ 
+ powershell.exe -file "P:\Powershell\Drop-Logins\Drop-Logins.ps1" "C:\temp\SQLServers.txt" "C:\temp\Logins.txt"
+
+#>
+
+##############################################################################################
+# Clear console screen
+##############################################################################################
+cls
+
+##############################################################################################
+# Load SMO libraries
+##############################################################################################
+[Void][System.Reflection.Assembly]::LoadWithPartialName("Microsoft.SqlServer.ConnectionInfo")
+[Void][System.Reflection.Assembly]::LoadWithPartialName("Microsoft.SqlServer.SMO")
+[Void][System.Reflection.Assembly]::LoadWithPartialName("Microsoft.SqlServer.SmoExtended")
+
+#Set Error Action to Silently Continue 
+$ErrorActionPreference = "SilentlyContinue"  
+
+#Set Execution Policy
+#Set-ExecutionPolicy UNRESTRICTED
+##############################################################################################
+# Variables Initialization
+##############################################################################################
+$_Date=Get-Date -Format yyyyMMdd_HHmmss
+$ScriptName = $myInvocation.MyCommand.Name -replace ".ps1", ""
+$ScriptPath = $myInvocation.MyCommand.Path -replace "\$ScriptName.ps1",""
+$_AdminDir="P:\admindba"
+$_LogDir=$_AdminDir + "\logs\"
+$_CfgDir=$_AdminDir + "\cfg\"
+$_TmpDir=$_AdminDir + "\tmp\"
+$LogPath = $ScriptPath + "\logs\"
+$logDTStr = Get-Date -Format "yyyy.MM.dd.hh.mm.ss.ms"
+$LogName = "Drop-Logins." + $logDTStr + ".log"
+$LogFile = $LogPath + $LogName
+$value1 = 0 
+# Create directory if does not exist
+if (!(Test-Path -path $_AdminDir)) {New-Item $_AdminDir -type directory}
+if (!(Test-Path -path $_LogDir)) {New-Item $_LogDir -type directory}
+if (!(Test-Path -path $_CfgDir)) {New-Item $_CfgDir -type directory}
+if (!(Test-Path -path $_TmpDir)) {New-Item $_TmpDir -type directory}
+if (!(Test-Path -path $LogPath)) {New-Item $LogPath -type directory}
+
+
+# Simple logging function
+function log ([string]$logdata){
+	#Event time stamp:
+	$logevent_timestamp = Get-Date -Format "[yyyy-MM-dd hh:mm:ss]"
+	Add-Content -Path $LogFile -Value "$logevent_timestamp - $logdata" -PassThru
+}
+# check SQL Server connection
+function SQLping {
+    param (
+        [parameter(Mandatory = $true)][string] $ServerInstance,
+        [parameter(Mandatory = $false)][int] $TimeOut = 1
+    )
+
+    $pingResult = $false
+
+    try
+    {
+        $SqlCatalog = "master"
+        $SqlConnection = New-Object System.Data.SqlClient.SqlConnection
+        $SqlConnection.ConnectionString = "Server = $ServerInstance; Database = $SqlCatalog; Integrated Security = True; Connection Timeout=$TimeOut"
+        $SqlConnection.Open() 
+        $PingResult = $SqlConnection.State -eq "Open"
+    }
+
+    catch {
+    }
+
+    finally
+    {
+        $SqlConnection.Close()
+    }
+
+    return $pingResult
+}
+
+
+#----------------------------------------------------------[Declarations]----------------------------------------------------------   
+function Drop-Logins{ ###########################
+	param(
+		[parameter(Position = 0, mandatory=$true)]
+		[string]$serverlist,
+		[parameter(Position = 1, mandatory=$true)]
+		[string]$loginlist
+	)
+
+	$ErrorActionPreference = "SilentlyContinue"
+	
+	try{
+		if(Test-Path $serverlist){
+			$servers = Get-Content $serverlist
+		}
+		else{
+			throw
+		}
+	}
+	catch{
+		log "[Error] Loading File: $serverlist"
+		log "[Error Type] $($_.Exception.GetBaseException().GetType().FullName) : $($_.Exception.GetBaseException().Message)"
+		return
+	}
+	try{
+		if(Test-Path $loginlist){
+			$logins = Get-Content $loginlist
+		}
+		else{
+			throw
+		}
+	}
+	catch{
+		log "[Error] Loading File: $loginlist"
+		log "[Error Type] $($_.Exception.GetBaseException().GetType().FullName) : $($_.Exception.GetBaseException().Message)"
+	
+	return
+	}
+	foreach($server in $servers) 
+	{    
+		log "[Info] Trying to connect to server: $server"
+		
+		if(SQLping $server){    
+			$srv = New-Object ('Microsoft.SqlServer.Management.Smo.Server') $server 
+				
+			#drop login on each user database
+			foreach($login in $logins)
+			
+			{ 
+
+				$value1 = 0
+
+				
+					foreach($database in $srv.Databases) {
+                        if($database.IsAccessible) {
+						if($database.Users.Contains($login))
+						{
+							try{
+								#drop database users
+								$database.Users[$login].Drop()
+								log "[Success] On Server: $server in Database: $database [$login] Drop is Successfull"
+								continue
+							}
+							catch {
+								$value1 = $value1 + 1
+								log "*******************************************************************************************************"
+								log "[Error] On Server: $server in Database: $database for login: [$login]"
+								log "[Error Type] $($_.Exception.GetBaseException().GetType().FullName) : $($_.Exception.GetBaseException().Message)"
+								log "*******************************************************************************************************"
+								continue
+							}
+						}
+                        			Elseif($database.Users.Contains($login))
+						{
+							try{
+								#drop database users
+                                				Remove $database.Users[$login];
+								#$database.Users[$login].Drop()
+								log "[Success] On Server: $server in Database: $database [$login] Drop is Successfull"
+								continue
+							}
+							catch {
+								$value1 = $value1 + 1
+								log "*******************************************************************************************************"
+								log "[Error] On Server: $server in Database: $database for login: [$login]"
+								log "[Error Type] $($_.Exception.GetBaseException().GetType().FullName) : $($_.Exception.GetBaseException().Message)"
+								log "*******************************************************************************************************"
+								continue
+							}
+						}
+#						else{
+#							log "[Warning] On Server: $server in Database: $database login: [$login] does not #exists"
+#						}
+					}
+				}
+			
+			
+			if ($srv.Logins.Contains($login) -and $value1 -eq 0)
+				{
+					#Drop Server Login
+					$srv.Logins[$login].Drop();
+					log "[Success] On Server: $server Login: [$login] has been droppped"
+		
+				}
+	
+			Elseif ($srv.Logins.Contains($login) -and $value1 -eq 0)
+				{
+					#Drop Server Login
+					#$srv.Logins[$login].Drop();
+                   			Remove $srv.Logins[$login];
+					log "[Success] On Server: $server Login: [$login] has been droppped"
+				}
+	
+
+			Elseif ($value1 -ge 1)
+			{
+			log "*******************************************************************************************************"
+				log "[PROBLEM] On Server: $server login: [$login] Owns a object in a database, login cannot be dropped"
+			log "*******************************************************************************************************"
+			}
+	
+			else{
+					log "[Warning] On Server: $server login: [$login] does not exists"
+				}
+			
+     }
+		else {
+			log "*******************************************************************************************************"
+			log "[Error] Connection filed to server: $server"
+			log "*******************************************************************************************************"
+			continue
+		      }
+	
+}
+
+}
+}
+Set-Location $ScriptPath
+
+#Execute Function with parameters
+Drop-Logins -serverlist $args[0] -loginlist $args[1]
+
+# Debugging
+#Drop-Logins -serverlist "P:\Powershell\SQLServer.txt" -loginlist "P:\Powershell\Login.txt" 
+#Drop-Logins -serverlist "P:\Powershell\Drop-Logins\SQLServers.txt" -loginlist "P:\Powershell\Drop-Logins\Logins.txt" 
+#Drop-Logins -serverlist "P:\Powershell\Drop-Logins\SQL.txt" -loginlist "P:\Powershell\Drop-Logins\Logins.txt" 

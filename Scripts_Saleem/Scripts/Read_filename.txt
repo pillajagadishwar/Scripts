@@ -1,0 +1,34 @@
+DROP TABLE #File
+GO
+
+CREATE TABLE #File
+  (
+        FileName    SYSNAME,
+        Depth       TINYINT,
+        IsFile      TINYINT
+   );
+GO
+            
+INSERT INTO #File
+(FileName, Depth, IsFile)
+EXEC xp_DirTree '\\vmgfehkg601\D$\Userlist\',1,1
+GO
+
+DECLARE @SQL nvarchar(2000)
+DECLARE @FILE nvarchar(2000)
+
+            SELECT @SQL = FileName FROM #File
+            WHERE IsFile = 1  AND FileName LIKE '2013%'
+            ORDER BY FileName;
+            --PRINT @SQL
+            
+            SET @FILE = '\\vmgfehkg601\D$\Userlist\' + @SQL
+            --PRINT @FILE
+            
+EXECUTE msdb.dbo.sp_send_dbmail
+@profile_name = 'DBA-MAIL',
+@recipients = 'denny.yung@socgen.com',
+@subject = 'Userlist',
+@body = '***PFA Userlist***',
+@file_attachments =  @FILE;
+Go

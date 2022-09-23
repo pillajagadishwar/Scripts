@@ -1,0 +1,48 @@
+-- Sp to kill connections on DB before refresh. Below appeneded how to call this proc
+
+USE [master]
+GO
+
+/****** Object:  StoredProcedure [dbo].[kill_all]    Script Date: 02/01/2013 18:24:51 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER OFF
+GO
+
+
+create proc [dbo].[sp_kill_all] (@dbname varchar(256))
+as
+declare cur_kill_all cursor
+for
+select spid from master..sysprocesses where dbid = db_id(@dbname)
+for read only
+declare @mort int
+declare @count int
+select @count=count(*) from master..sysprocesses where dbid = db_id(@dbname)
+while @count <> 0
+BEGIN
+ open cur_kill_all
+ fetch next from cur_kill_all into @mort
+ while @@fetch_status<>-1
+  BEGIN
+   --print 'kill ' +convert(varchar(3),@mort)
+   execute ('kill ' +@mort)
+   fetch next from cur_kill_all into @mort
+  END
+ close cur_kill_all
+ select @count=count(*) from master..sysprocesses where dbid = db_id(@dbname)
+END
+deallocate cur_kill_all
+
+
+GO
+
+
+
+
+
+USE [master]
+GO
+Exec sp_kill_all ‘PROD_MARGINMAN’
+go

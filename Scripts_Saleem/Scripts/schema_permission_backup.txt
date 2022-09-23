@@ -1,0 +1,33 @@
+schema details
+=============
+SELECT SCHEMA_NAME(major_id) [Schema]
+    , USER_NAME(grantee_principal_id) [Login]
+    , permission_name [Permission]
+    , state_desc [State]
+    --, *
+FROM sys.database_permissions
+WHERE class_desc = 'SCHEMA'
+ORDER BY major_id, grantee_principal_id, permission_name
+
+Synatax
+-------
+
+A. Granting INSERT permission on schema HumanResources to guest
+
+
+GRANT INSERT ON SCHEMA :: HumanResources TO guest;
+
+B. Granting SELECT permission on schema Person to database user WilJo
+
+GRANT SELECT ON SCHEMA :: Person TO WilJo WITH GRANT OPTION;
+
+
+Script out permissions
+====================================================================================
+SELECT 'GRANT ' + dp.permission_name collate latin1_general_cs_as
+    + ' ON ' + s.name + '.' + o.name + ' TO ' + dpr.name 
+    FROM sys.database_permissions AS dp
+    INNER JOIN sys.objects AS o ON dp.major_id=o.object_id
+    INNER JOIN sys.schemas AS s ON o.schema_id = s.schema_id
+    INNER JOIN sys.database_principals AS dpr ON dp.grantee_principal_id=dpr.principal_id
+    WHERE dpr.name NOT IN ('public','guest')

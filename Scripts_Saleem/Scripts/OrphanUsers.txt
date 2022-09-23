@@ -1,0 +1,118 @@
+-- This script maps all users for a database 
+
+declare @sql_cmd varchar(300), @uname varchar(64); 
+
+declare fklist_cur cursor for 
+
+SELECT name FROM SYS.DATABASE_PRINCIPALS
+WHERE
+TYPE != 'R' --Users only
+AND type_desc not like 'DATABASE_ROLE' --All Logins
+AND NAME NOT IN ('DBO','guest','sys','INFORMATION_SCHEMA')
+EXCEPT
+(SELECT DP.NAME FROM SYS.DATABASE_PRINCIPALS DP
+INNER JOIN SYS.SERVER_PRINCIPALS SP ON DP.SID = SP.SID 
+WHERE DP.TYPE != 'R' AND DP.type_desc not like 'DATABASE_ROLE')
+
+open fklist_cur
+fetch next from fklist_cur into @uname
+while (@@fetch_status <> -1)
+begin
+select @sql_cmd = 'ALTER USER ['+@uname+'] with Login= ['+@uname+']'
+print @sql_cmd
+EXEC (@sql_cmd)
+fetch next from fklist_cur into @uname
+end
+close fklist_cur
+
+deallocate fklist_cur
+go
+
+
+===========================================================================================================
+
+
+-- this script map users for a database and delete other users that doesnt have login - careful
+
+declare @sql varchar(max), @uname varchar(64); 
+
+declare fklist_cur cursor for 
+
+SELECT name FROM SYS.DATABASE_PRINCIPALS
+WHERE
+TYPE != 'R' --Users only
+AND type_desc not like 'DATABASE_ROLE' --Windows Logins only
+AND NAME NOT IN ('DBO','guest','sys','INFORMATION_SCHEMA')
+EXCEPT
+(SELECT DP.NAME FROM SYS.DATABASE_PRINCIPALS DP
+INNER JOIN SYS.SERVER_PRINCIPALS SP ON DP.SID = SP.SID 
+WHERE DP.TYPE != 'R' AND DP.type_desc not like 'DATABASE_ROLE')
+
+
+open fklist_cur
+fetch next from fklist_cur into @uname
+while (@@fetch_status <> -1)
+BEGIN
+
+BEGIN TRY
+ALTER USER ['+@uname+'] with Login= ['+@uname+']
+END TRY
+
+BEGIN CATCH
+		print @uname + ' does not exist as a Login. Deleting. '
+		
+		-- 3)
+		BEGIN TRY 
+			SET @SQL = 'DROP SCHEMA ['+@uname+']'
+			PRINT @SQL
+			EXEC (@SQL)
+		END TRY
+		BEGIN CATCH
+		END CATCH
+		
+		-- 4)
+		SET @SQL = 'DROP USER ['+@uname+']'
+		PRINT @SQL
+		EXEC (@SQL)
+	END CATCH
+
+fetch next from fklist_cur into @uname
+end
+close fklist_cur
+
+deallocate fklist_cur
+go
+
+
+
+======================================================================================================
+-- this script maps users for a database 
+
+declare @sql_cmd varchar(300), @uname varchar(64); 
+
+declare fklist_cur cursor for 
+
+SELECT name FROM sys.database_principals
+WHERE
+TYPE != 'R' --Users only
+AND type_desc not like 'DATABASE_ROLE' --All Logins
+AND NAME NOT IN ('DBO','guest','sys','INFORMATION_SCHEMA')
+EXCEPT
+(SELECT DP.NAME FROM sys.database_principals DP
+INNER JOIN sys.server_principals SP ON DP.SID = SP.SID 
+WHERE DP.TYPE != 'R' AND DP.type_desc not like 'DATABASE_ROLE')
+
+open fklist_cur
+fetch next from fklist_cur into @uname
+while (@@fetch_status <> -1)
+begin
+select @sql_cmd = 'ALTER USER ['+@uname+'] with Login= ['+@uname+']'
+print @sql_cmd
+EXEC (@sql_cmd)
+fetch next from fklist_cur into @uname
+end
+close fklist_cur
+
+deallocate fklist_cur
+go
+

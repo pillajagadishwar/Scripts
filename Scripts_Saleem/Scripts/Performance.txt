@@ -1,0 +1,63 @@
+** Performance
+***************
+--:sp_configure
+SELECT @@servername,getdate(),* FROM sys.configurations ORDER BY name
+
+--:sys_databases
+select @@servername,getdate(),* from master.sys.databases
+
+--:sys_master_files
+select @@servername,getdate(),* from sys.master_files
+
+--:os_memory_clerks
+SELECT @@servername,getdate(),* from sys.dm_os_memory_clerks
+
+--:os_schedulers
+SELECT @@servername,getdate(),* from sys.dm_os_schedulers
+
+--:os_wait_stats
+SELECT @@servername,getdate(),* from sys.dm_os_wait_stats where waiting_tasks_count > 0
+
+--:os_waiting_tasks
+SELECT @@servername,getdate(),* from sys.dm_os_waiting_tasks
+
+--:sys_endpoints
+SELECT @@servername,getdate(),* from sys.tcp_endpoints
+
+--:exec_connections
+SELECT @@servername,getdate(),* from sys.dm_exec_connections
+
+--:exec_requests
+SELECT @@servername,getdate(),* from sys.dm_exec_requests
+
+--:exec_sessions
+SELECT @@servername,getdate(),* from sys.dm_exec_sessions where is_user_process = 1
+
+--:pending_io
+SELECT @@servername,getdate(),* from sys.dm_io_pending_io_requests
+
+--:sys_traces
+SELECT @@servername,getdate(),* from sys.traces
+
+--:top_CPU
+SELECT top 25 @@servername,getdate(),ltrim(rtrim(replace(replace(q.[text], char(10), ' '), char(13), ' '))) as [Query],	(highest_cpu_queries.total_worker_time/highest_cpu_queries.execution_count) AS AverageCPU, (highest_cpu_queries.total_elapsed_time/highest_cpu_queries.execution_count) AS AverageDuration,	highest_cpu_queries.execution_count, highest_cpu_queries.total_worker_time, 	highest_cpu_queries.plan_generation_num, highest_cpu_queries.creation_time,	highest_cpu_queries.last_execution_time, 	highest_cpu_queries.last_physical_reads, highest_cpu_queries.min_physical_reads,	q.dbid, q.objectid, q.number, q.encrypted, plan_handle, p.query_plan   		FROM (SELECT TOP 25 qs.plan_handle, qs.total_worker_time, qs.total_elapsed_time, qs.last_execution_time,	qs.plan_generation_num, qs.creation_time, qs.execution_count, qs.last_physical_reads,	qs.min_physical_reads FROM sys.dm_exec_query_stats qs 	ORDER BY qs.total_worker_time DESC) AS highest_cpu_queries 	CROSS APPLY sys.dm_exec_sql_text(plan_handle) AS q 	CROSS APPLY sys.dm_exec_query_plan(plan_handle) AS p	ORDER BY AverageCPU DESC
+
+--:top_disk_io
+SELECT TOP 25  @@servername,getdate(),ltrim(rtrim(replace(replace(q.[text], char(10), ' '), char(13), ' '))) as [Query],(total_logical_reads/execution_count) as avg_logical_reads, min_logical_reads, last_logical_reads, (total_logical_writes/execution_count) as avg_logical_writes, min_logical_writes, last_logical_writes, (total_physical_reads/execution_count) as avg_phys_reads, min_physical_reads, last_physical_reads, Execution_count, last_execution_time	, plan_handle, p.query_plan 	FROM sys.dm_exec_query_stats 	CROSS APPLY sys.dm_exec_sql_text(plan_handle) AS q 	CROSS APPLY sys.dm_exec_query_plan(plan_handle) AS p	ORDER BY (total_logical_reads + total_logical_writes) DESC
+
+--:top_program_count
+select @@servername,getdate(),count(*) as 'Count',c.client_net_address, sum(c.num_reads)as 'Total Reads', sum(c.num_writes) as 'Total Writes',s.program_name from sys.dm_exec_connections c join sys.dm_exec_sessions s on (c.session_id = s.session_id) where s.session_id > 49 group by c.client_net_address,s.program_name order by Count(*) DESC
+
+--:top_reads
+SELECT TOP 25 @@servername,getdate(),ltrim(rtrim(replace(replace(q.[text], char(10), ' '), char(13), ' '))) as [Query],(total_logical_reads/execution_count) as avg_logical_reads, min_logical_reads, last_logical_reads, (total_logical_writes/execution_count) as avg_logical_writes, min_logical_writes, last_logical_writes, (total_physical_reads/execution_count) as avg_phys_reads, min_physical_reads, last_physical_reads, Execution_count, last_execution_time	, plan_handle, p.query_plan		FROM sys.dm_exec_query_stats 	CROSS APPLY sys.dm_exec_sql_text(plan_handle) AS q 	CROSS APPLY sys.dm_exec_query_plan(plan_handle) AS p	ORDER BY total_logical_reads  DESC
+
+--:top_writes
+SELECT TOP 25 @@servername,getdate(),ltrim(rtrim(replace(replace(q.[text], char(10), ' '), char(13), ' '))) as [Query],(total_logical_reads/execution_count) as avg_logical_reads, min_logical_reads, last_logical_reads, (total_logical_writes/execution_count) as avg_logical_writes, min_logical_writes, last_logical_writes, (total_physical_reads/execution_count) as avg_phys_reads, min_physical_reads, last_physical_reads, Execution_count, last_execution_time	, plan_handle, p.query_plan	FROM sys.dm_exec_query_stats  	cross APPLY sys.dm_exec_sql_text(plan_handle) AS q 	cross APPLY sys.dm_exec_query_plan(plan_handle) AS p	ORDER BY total_logical_writes DESC
+
+--:missing_indexes
+SELECT @@servername, getdate(), object_name(object_id) as 'Object Name',db_name(database_id) as 'Database Name', a.avg_total_user_cost, a.avg_user_impact, a.user_seeks, a.user_scans,a.avg_total_user_cost * a.avg_user_impact * (a.user_seeks + a.user_scans) as MI_Cost,c.equality_columns, c.inequality_columns, c.included_columns, c.statement FROM sys.dm_db_missing_index_group_stats a join sys.dm_db_missing_index_groups b 	on (a.group_handle = b.index_group_handle)	join sys.dm_db_missing_index_details c on (b.index_handle = c.index_handle)
+
+--:io_stalls
+select @@servername, getdate(), * from sys.dm_io_virtual_file_stats (null, null)
+
+

@@ -1,0 +1,86 @@
+CREATE TABLE #FileStatsPerDb
+(
+ID INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+[databaseName] [NVARCHAR](128) NULL,
+[FileType] [NVARCHAR](60) NULL,
+[physical_name] [NVARCHAR](260) NOT NULL,
+[DriveLetter] VARCHAR(5) NULL,
+[READS] [BIGINT] NOT NULL,
+[BytesRead] [BIGINT] NOT NULL,
+[Writes] [BIGINT] NOT NULL,
+[BytesWritten] [BIGINT] NOT NULL,
+[SIZE] [BIGINT] NOT NULL,
+[InsertDate] [DATETIME] NOT NULL DEFAULT GETDATE()
+) ON [PRIMARY] 
+
+DECLARE @Counter TINYINT
+DECLARE @DelaySeconds INT
+DECLARE @TestTime DATETIME 
+
+--Set Parameters
+/*
+The counter is just to initialize the number to 1
+The Delayseconds Tells SQL Server how long to wait before it runs the second data point.
+How long you want this depends on what your needs are.  If I have a load test running for
+5 minutes and I want to know what the read and Write percents were during those 5 minutes
+I set it to 300. If I just want a quick look at the system I’ll usually set it to 60 seconds,
+To give me a one minute view.  This depends on if it’s a busy time and what’s going on during that time.
+*/
+SET @Counter = 1
+SET @DelaySeconds = 60
+SET @TestTime = DATEADD(SS,@DelaySeconds,GETDATE()) 
+
+WHILE @Counter <=2
+BEGIN
+INSERT INTO #FileStatsPerDb (DatabaseName,FileType,Physical_Name,DriveLetter,READS,BytesRead,Writes,BytesWritten,SIZE)
+SELECT
+DB_NAME(mf.database_id) AS DatabaseName
+,Mf.Type_desc AS FileType
+,Mf.Physical_name AS Physical_Name
+,LEFT(Mf.Physical_name,1) AS Driveletter
+,num_of_reads AS READS
+,num_of_bytes_read AS BytesRead
+,num_of_writes AS Writes
+,num_of_bytes_written AS BytesWritten
+,size_on_disk_bytes AS SIZE
+FROM sys.dm_io_virtual_file_stats(NULL, NULL) AS fs
+JOIN sys.master_files AS mf ON mf.database_id = fs.database_id
+AND mf.FILE_ID = fs.FILE_ID
+IF @Counter = 1
+BEGIN
+WAITFOR TIME @TestTime
+END
+SET @Counter = @Counter + 1
+END 
+
+;
+WITH FileStatCTE (Databasename,Filetype,Driveletter,TotalReads,TotalWrites,TotalSize,TotalBytesRead,TotalBytesWritten)
+AS
+(SELECT BL.Databasename,BL.FileType,Bl.DriveLetter,
+NULLIF(SUM(cp.Reads-bl.Reads),0) AS TotalReads,
+NULLIF(SUM(cp.Writes-bl.Writes),0) AS TotalWrites,
+NULLIF(((SUM(cp.Size-bl.Size))/1024),0) AS TotalSize,
+NULLIF(((SUM(cp.BytesRead-bl.BytesRead))/1024),0) AS TotalKiloBytesRead,
+NULLIF(((SUM(cp.BytesWritten-bl.BytesWritten))/1024),0) AS TotalKiloBytesWritten
+FROM
+( SELECT insertdate,Databasename,FileType,DriveLetter,READS,BytesRead,Writes,BytesWritten,SIZE
+FROM #FileStatsPerDb
+WHERE InsertDate IN (SELECT MIN(InsertDate) FROM #FileStatsPerDb) ) AS BL --Baseline
+JOIN
+( SELECT insertdate,Databasename,FileType,DriveLetter,READS,BytesRead,Writes,BytesWritten,SIZE
+FROM #FileStatsPerDb
+WHERE InsertDate IN (SELECT MAX(InsertDate) FROM #FileStatsPerDb) ) AS CP-- Comparison
+ON BL.Databasename = cp.Databasename
+AND bl.filetype = cp.filetype
+AND bl.DriveLetter = cp.DriveLetter
+GROUP BY BL.databasename,BL.filetype,Bl.driveletter) 
+
+/*
+Return the Read and write percent for Each DB and file.  Order by ReadPercent
+*/
+SELECT databasename,filetype,driveletter,
+100. * TotalReads / SUM(TotalReads) OVER() AS ReadPercent,
+100. * TotalWrites / SUM(TotalWrites) OVER() AS WritePercent
+FROM FileStatCTE
+ORDER BY ReadPercent DESC,WritePercent DESC
+

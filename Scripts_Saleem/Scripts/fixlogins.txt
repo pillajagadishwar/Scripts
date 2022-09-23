@@ -1,0 +1,16 @@
+declare @sql_cmd varchar(300), @uname varchar(64); 
+
+declare fklist_cur cursor for select name from sysusers where issqluser = 1 and name not in ('guest','dbo') and sid not in (select sid from master..syslogins)
+open fklist_cur
+fetch next from fklist_cur into @uname
+while (@@fetch_status <> -1)
+begin
+select @sql_cmd = 'exec sp_change_users_login @Action= ''update_one'', @UserNamePattern='''+@uname+''',@LoginName='''+@uname+''''
+print @sql_cmd
+EXEC (@sql_cmd)
+fetch next from fklist_cur into @uname
+end
+close fklist_cur
+
+deallocate fklist_cur
+go

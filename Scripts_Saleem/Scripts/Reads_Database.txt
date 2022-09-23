@@ -1,0 +1,10 @@
+SELECT  S.[name] AS [Name],
+        SUM(IUS.user_lookups + IUS.user_scans + IUS.user_seeks) AS [Reads],
+        SUM(IUS.user_updates) AS [Updates]
+FROM    sys.dm_db_index_usage_stats IUS
+        INNER JOIN sys.objects S 
+       ON S.object_id = IUS.object_id
+WHERE   S.type = 'U'
+    AND IUS.[database_id] = DB_ID()
+GROUP BY [Name]
+ORDER BY [Name];

@@ -1,0 +1,5 @@
+Factors which could affect the performance:
+
+1. LTRIM and RTRIM functions are there in Joins and Where clause.
+2. Select query with joins in another Join
+

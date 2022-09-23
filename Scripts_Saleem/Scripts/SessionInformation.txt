@@ -1,0 +1,7 @@
+select ses.session_id, db.name as dbname ,ses.host_name, ses.login_name, ses.login_time, ses.CPU_time, ses.memory_usage,  ses.Program_Name, 
+ sp.waittime, sp.lastwaittype,sp.cpu, sp.memusage,sp.cmd, sp.hostname, ses.status  
+ from sys.dm_exec_sessions ses 
+ inner join sys.sysprocesses sp on sp.spid = ses.session_id   
+ inner join  sys.sysdatabases db on db.dbid = ses.database_id  
+ where ses.session_id > 50 --db.name = 'master'
+ order by ses.cpu_time desc, ses.memory_usage desc

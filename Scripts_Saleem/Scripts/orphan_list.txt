@@ -1,0 +1,18 @@
+Create table #OrphUsers
+(DatabaseName nvarchar(50),
+OrphanedUserName nvarchar(100),
+UserType nvarchar(50));
+
+insert into #OrphUsers EXEC sp_MSforeachdb 'SELECT ''?'' as DatabaseName, a.name AS OrphanUserName, a.type_desc AS UserType
+	FROM  [?].sys.database_principals a
+	LEFT OUTER JOIN [?].sys.server_principals b
+	ON a.sid = b.sid
+	WHERE b.sid IS NULL
+	AND a.type In (''S'', ''U'', ''G'')
+	AND a.name NOT in (''sys'', ''INFORMATION_SCHEMA'', ''guest'')'
+
+select * from #OrphUsers 
+
+drop table #OrphUsers
+
+

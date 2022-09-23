@@ -1,0 +1,6 @@
+select'exec sp_changeobjectowner '''+user_name(uid)+'.'+name+''',''sus''' 
+from sysobjects where xtype='U'
+
+
+select'exec sp_changeobjectowner '''+user_name(uid)+'.'+name+''',''sus''' 
+from sysobjects where xtype in('U','P','V','FN','TF')

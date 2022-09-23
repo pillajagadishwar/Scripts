@@ -1,0 +1,61 @@
+-- 1) List all Orphaned users on existing DB
+-- 2) Associate the DB User with the server Login, if existing
+-- 3) If 2) fails, try to delete associated DB Schema
+-- 4) Drop User
+
+DECLARE @UserName varchar(100),
+		@SQL as varchar(max)
+
+CREATE TABLE
+	#users (
+			Username varchar(100),
+			UserSID varbinary (85)
+			)
+-- 1)
+INSERT INTO 
+	#users 
+	exec sp_change_users_login @Action='Report'
+
+DECLARE mycurs CURSOR FOR 
+	SELECT 
+		Username 
+	FROM
+		#users
+		
+OPEN mycurs
+FETCH NEXT FROM mycurs 
+INTO @username
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+
+	-- 2)
+	BEGIN TRY
+	EXEC sp_change_users_login @Action='update_one', @UserNamePattern=@UserName, @LoginName=@UserName
+	END TRY
+
+	BEGIN CATCH
+		print @Username + ' does not exist as a Login. Deleting. '
+		
+		-- 3)
+		BEGIN TRY 
+			SET @SQL = 'DROP SCHEMA ' + @UserName
+			EXEC (@SQL)
+		END TRY
+		BEGIN CATCH
+		END CATCH
+		
+		-- 4)
+		SET @SQL = 'DROP USER ' + @UserName
+		EXEC (@SQL)
+	END CATCH
+    FETCH NEXT FROM mycurs 
+    INTO @username
+END
+
+CLOSE mycurs
+DEALLOCATE mycurs
+
+DROP TABLE #users
+
+

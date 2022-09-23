@@ -1,0 +1,247 @@
+/**********************************************************************************************************/
+/* create the defragmentation job for all the database except master, tempdb, model,msdb																	*/
+/**********************************************************************************************************/
+
+-- create job
+
+USE [msdb]
+GO
+
+IF  EXISTS (SELECT job_id FROM msdb.dbo.sysjobs_view WHERE name = N'DBA-DEFRAG DATABASE')
+EXEC msdb.dbo.sp_delete_job @job_name=N'DBA-DEFRAG DATABASE', @delete_unused_schedule=1
+GO
+
+USE [msdb]
+GO
+DECLARE @OutputFilePath Nvarchar(255)
+SET @OutputFilePath =N'C:\TEMP\JOB_Defrag_'+replace(@@servername,'\','_')+'.log'
+
+BEGIN TRANSACTION
+DECLARE @ReturnCode INT
+SELECT @ReturnCode = 0
+IF NOT EXISTS (SELECT name FROM msdb.dbo.syscategories WHERE name=N'DBA - MAINTENANCE' AND category_class=1)
+BEGIN
+EXEC @ReturnCode = msdb.dbo.sp_add_category @class=N'JOB', @type=N'LOCAL', @name=N'DBA - MAINTENANCE'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+
+END
+
+DECLARE @jobId BINARY(16)
+EXEC @ReturnCode =  msdb.dbo.sp_add_job @job_name=N'DBA-DEFRAG DATABASE', 
+		@enabled=1, 
+		@notify_level_eventlog=0, 
+		@notify_level_email=0, 
+		@notify_level_netsend=0, 
+		@notify_level_page=0, 
+		@delete_level=0, 
+		@description=N'This job will remove the fragmentation by rebuilding the indexes. Each index is rebuild in function of his fragmentation percentage.', 
+		@category_name=N'DBA - MAINTENANCE', 
+		@owner_login_name=N'sa', @job_id = @jobId OUTPUT
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+
+EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'Step DEFRAGMENTATION', 
+		@step_id=1, 
+		@cmdexec_success_code=0, 
+		@on_success_action=1, 
+		@on_success_step_id=0, 
+		@on_fail_action=2, 
+		@on_fail_step_id=0, 
+		@retry_attempts=0, 
+		@retry_interval=0, 
+		@os_run_priority=0, @subsystem=N'TSQL', 
+		@command=N'SET QUOTED_IDENTIFIER ON
+SET NOCOUNT ON
+GO
+DECLARE @DBName varchar(50)
+DECLARE @Script nvarchar(max)
+DECLARE @Status int, @State int
+DECLARE @RecipientsList VARCHAR(MAX) -- recipents to notify in case of error
+DECLARE @RebuildThreshold INT -- Fragmentation percent Threshold to rebuild the index - value recommended 30 %
+DECLARE @ReorganizeThreshold INT -- Fragmentation percent Threshold to reorganizethe index - value between 5% and 30 %
+DECLARE @MAXDOP INT -- degree of parallelism -> 0 means the max degree of parallelism
+DECLARE @SORT_IN_TEMPDB BIT
+
+-- parameters definition
+SET @ReorganizeThreshold = 5
+SET @RebuildThreshold = 30
+SEt @MAXDOP = 0
+SET @SORT_IN_TEMPDB = 0
+
+
+	SET @State = 0
+	-- cursor to retrieve de database list
+	-- all the databases ONLINE except master, tempdb,model,msdb
+	DECLARE DatabaseList CURSOR FOR
+		  SELECT name FROM sys.databases WHERE name not in (''master'', ''msdb'',''tempdb'',''model'') and state_desc=''ONLINE''
+	FOR READ ONLY
+
+	OPEN DatabaseList
+	FETCH NEXT FROM DatabaseList
+	INTO @DBName
+	WHILE @@FETCH_STATUS = 0
+	BEGIN
+		-- call the defragmentation procedure for each database
+		EXEC msdb.dbo.DbDefragmentation @DBName=@DBName,@SORT_IN_TEMPDB_BIT=@SORT_IN_TEMPDB, @MAXDOP=@MAXDOP,@ReorganizeThreshold = @ReorganizeThreshold,@RebuildThreshold = @RebuildThreshold,@Status=@Status OUT 
+		Set @State = @State + @Status
+
+		FETCH NEXT FROM DatabaseList
+		INTO @DBName
+
+	END
+
+	CLOSE DatabaseList
+	DEALLOCATE DatabaseList
+	IF @State>0
+		RAISERROR(''Defragmantation job failed - check the table GDAT_JOBHISTORY for further details'',16,1) WITH LOG,NOWAIT,SETERROR
+	', 
+		@database_name=N'msdb', 
+		@output_file_name=@OutputFilePath, 
+		@flags=12
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_update_job @job_id = @jobId, @start_step_id = 1
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_add_jobschedule @job_id=@jobId, @name=N'DBA_Defrag_Schedule', 
+		@enabled=1, 
+		@freq_type=8, 
+		@freq_interval=1, 
+		@freq_subday_type=1, 
+		@freq_subday_interval=0, 
+		@freq_relative_interval=0, 
+		@freq_recurrence_factor=1, 
+		@active_start_date=20090603, 
+		@active_end_date=99991231, 
+		@active_start_time=10000, 
+		@active_end_time=235959
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_add_jobserver @job_id = @jobId, @server_name = N'(local)'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+COMMIT TRANSACTION
+GOTO EndSave
+QuitWithRollback:
+    IF (@@TRANCOUNT > 0) ROLLBACK TRANSACTION
+EndSave:
+
+GO
+
+
+
+
+
+/**********************************************************************************************************/
+/* create the update statistics job for all the database except master, tempdb, model,msdb																	*/
+/**********************************************************************************************************/
+
+USE [msdb]
+GO
+
+IF  EXISTS (SELECT job_id FROM msdb.dbo.sysjobs_view WHERE name = N'DBA-UPDSTATS DATABASE')
+EXEC msdb.dbo.sp_delete_job @job_name=N'DBA-UPDSTATS DATABASE', @delete_unused_schedule=1
+GO
+
+USE [msdb]
+GO
+
+DECLARE @OutputFilePath Nvarchar(255)
+SET @OutputFilePath =N'C:\TEMP\JOB_UpdStats_'+replace(@@servername,'\','_')+'.log'
+
+BEGIN TRANSACTION
+DECLARE @ReturnCode INT
+SELECT @ReturnCode = 0
+IF NOT EXISTS (SELECT name FROM msdb.dbo.syscategories WHERE name=N'DBA - MAINTENANCE' AND category_class=1)
+BEGIN
+EXEC @ReturnCode = msdb.dbo.sp_add_category @class=N'JOB', @type=N'LOCAL', @name=N'DBA - MAINTENANCE'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+
+END
+
+DECLARE @jobId BINARY(16)
+EXEC @ReturnCode =  msdb.dbo.sp_add_job @job_name=N'DBA-UPDSTATS DATABASE', 
+		@enabled=1, 
+		@notify_level_eventlog=0, 
+		@notify_level_email=0, 
+		@notify_level_netsend=0, 
+		@notify_level_page=0, 
+		@delete_level=0, 
+		@description=N'No description available.', 
+		@category_name=N'DBA - MAINTENANCE', 
+		@owner_login_name=N'sa', @job_id = @jobId OUTPUT
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_add_jobstep @job_id=@jobId, @step_name=N'Step UPDATE STATISTICS', 
+		@step_id=1, 
+		@cmdexec_success_code=0, 
+		@on_success_action=1, 
+		@on_success_step_id=0, 
+		@on_fail_action=2, 
+		@on_fail_step_id=0, 
+		@retry_attempts=0, 
+		@retry_interval=0, 
+		@os_run_priority=0, @subsystem=N'TSQL', 
+		@command=N'SET QUOTED_IDENTIFIER ON
+SET NOCOUNT ON
+GO
+DECLARE @DBName varchar(50)
+DECLARE @Script nvarchar(max)
+DECLARE @Status int, @State int
+DECLARE @RecipientsList VARCHAR(MAX) -- recipents to notify in case of error
+DECLARE @FULLSCAN BIT -- set 
+
+-- parameters definition
+SET @FULLSCAN = 0 -- activate the FULLSCAN option to avoid the sampling
+
+
+
+	SET @State = 0
+	-- cursor to retrieve de database list
+	-- all the databases ONLINE except master, tempdb,model,msdb
+	DECLARE DatabaseList CURSOR FOR
+		  SELECT name FROM sys.databases WHERE name not in (''master'', ''msdb'',''tempdb'',''model'') and state_desc=''ONLINE''
+	FOR READ ONLY
+
+	OPEN DatabaseList
+	FETCH NEXT FROM DatabaseList
+	INTO @DBName
+	WHILE @@FETCH_STATUS = 0
+	BEGIN
+		-- call the update statistics procedure for each database
+		EXEC msdb.dbo.DbUpdateStatistics @DBName=@DBName,@FULLSCAN = @FULLSCAN,@Status=@Status OUT 
+		Set @State = @State + @Status
+
+		FETCH NEXT FROM DatabaseList
+		INTO @DBName
+
+	END
+
+	CLOSE DatabaseList
+	DEALLOCATE DatabaseList
+	IF @State>0
+		RAISERROR(''Update Statistics job failed - check the table GDAT_JOBHISTORY for further details'',16,1) WITH LOG,NOWAIT,SETERROR
+
+	', 
+		@database_name=N'msdb', 
+		@output_file_name=@OutputFilePath, 
+		@flags=4
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_update_job @job_id = @jobId, @start_step_id = 1
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_add_jobschedule @job_id=@jobId, @name=N'DBA_UpdStats_Schedule', 
+		@enabled=1, 
+		@freq_type=8, 
+		@freq_interval=1, 
+		@freq_subday_type=1, 
+		@freq_subday_interval=0, 
+		@freq_relative_interval=0, 
+		@freq_recurrence_factor=1, 
+		@active_start_date=20090608, 
+		@active_end_date=99991231, 
+		@active_start_time=20000, 
+		@active_end_time=235959
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+EXEC @ReturnCode = msdb.dbo.sp_add_jobserver @job_id = @jobId, @server_name = N'(local)'
+IF (@@ERROR <> 0 OR @ReturnCode <> 0) GOTO QuitWithRollback
+COMMIT TRANSACTION
+GOTO EndSave
+QuitWithRollback:
+    IF (@@TRANCOUNT > 0) ROLLBACK TRANSACTION
+EndSave:
+
+GO

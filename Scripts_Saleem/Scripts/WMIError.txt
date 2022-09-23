@@ -1,0 +1,7 @@
+1. Disable and stop the Windows Management Instrumentation service.
+2. Right-click Command Prompt and select Run as Administrator.
+3. In the Command Prompt, type cd %windir%\system32\wbem and press Enter.
+4. Type for /f %s in ('dir /b *.dll') do regsvr32 /s %s and press Enter to re-register WMI DLL files.
+5. After completed, type for /f %s in ('dir /b *.mof') do mofcomp %s and press Enter to re-compile WMI mof files.
+6. After that, type the command wmiprvse /regserver and press Enter.
+7. Start the Windows Management Instrumentation service and change the Startup Type back to Automatic.

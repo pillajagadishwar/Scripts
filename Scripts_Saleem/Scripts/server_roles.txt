@@ -1,0 +1,12 @@
+select
+        sp.name as principal_name,
+        sp.type_desc as principal_type,
+        spr.name as security_entity,
+        'role membership' as security_type,
+        null as state_desc
+    from sys.server_principals sp
+    inner join sys.server_role_members srm
+    on sp.principal_id = srm.member_principal_id
+    inner join sys.server_principals spr
+    on srm.role_principal_id = spr.principal_id
+    where sp.type in ('S', 'U','R','C','G')

@@ -1,0 +1,11 @@
+SELECT  Max(restore_date)
+FROM    msdb.dbo.restorehistory 
+WHERE   destination_database_name = 'XXXXXXXXXX' AND
+        restore_type = 'L'
+
+
+SELECT      database_name, bs.backup_start_date, bs.backup_finish_date 
+FROM        msdb..backupfile bf
+JOIN        msdb..backupset bs ON bf.backup_set_id = bs.backup_set_id
+WHERE       bf.File_Type = 'L' and database_name =  'ISEE'
+order by bs.backup_finish_date desc

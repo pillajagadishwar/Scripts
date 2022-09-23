@@ -1,0 +1,6 @@
+use msdb
+go
+select TOP 10 a.backup_start_date,a.backup_finish_date,a.database_name AS source_database,a.server_name AS Source_instance,a.machine_name AS Source_Machine,b.physical_device_name AS Source_dump_path,
+c.restore_date,c.destination_database_name from backupset as a INNER JOIN backupmediafamily as b ON a.media_set_id=b.media_set_id 
+INNER JOIN restorehistory  AS c ON a.backup_set_id=c.backup_set_id Order by restore_date desc
+go

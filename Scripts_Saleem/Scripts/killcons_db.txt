@@ -1,0 +1,3 @@
+SELECT 'kill ' + convert(char(4), spid)  FROM master..sysprocesses where db_name(dbid)='glaamdb'
+
+-- kill all connections for a provided database
