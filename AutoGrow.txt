@@ -1,0 +1,26 @@
+Declare @messages Table
+(
+	message_data XML
+);
+
+Receive CAST(message_body AS XML)
+FROM AutoGrowNotifyQueue
+INTO @messages;
+
+INSERT dbo.AutoGrowEventstbl
+(
+	EventType,
+	PostTime,
+	SPID,
+	ServerName,
+	LoginName,
+	UserName,
+	DatabaseName,
+	GrowthPages
+	/*
+	ObjectName,
+	NewObjectName,
+	ObjectType,
+	TSQLCommand
+	*/
+)
