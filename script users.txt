@@ -1,0 +1,51 @@
+--Run the below on each database for database-level security. 
+ SELECT DB_NAME() as Database_Name 
+--Database Level Roles 
+SELECT DISTINCT 
+QUOTENAME(r.name) as database_role_name, r.type_desc, QUOTENAME(d.name) as principal_name, d.type_desc 
+, TSQL = 'EXEC sp_addrolemember @membername = N''' + d.name COLLATE DATABASE_DEFAULT + ''', @rolename = N''' + r.name + '''' 
+FROM sys.database_role_members AS rm 
+inner join sys.database_principals r on rm.role_principal_id = r.principal_id 
+inner join sys.database_principals d on rm.member_principal_id = d.principal_id 
+where d.name not in ('dbo', 'sa', 'public') 
+--Database Level Security 
+SELECT rm.state_desc 
+, rm.permission_name 
+, QUOTENAME(u.name) COLLATE database_default 
+, u.TYPE_DESC 
+, TSQL = rm.state_desc + N' ' + rm.permission_name + N' TO ' + cast(QUOTENAME(u.name COLLATE DATABASE_DEFAULT) as nvarchar(256)) 
+FROM sys.database_permissions AS rm 
+INNER JOIN 
+sys.database_principals AS u 
+ON rm.grantee_principal_id = u.principal_id 
+WHERE rm.major_id = 0 
+and u.name not like '##%' 
+and u.name not in ('dbo', 'sa', 'public') 
+ORDER BY rm.permission_name ASC, rm.state_desc ASC 
+--Database Level Explicit Permissions 
+SELECT perm.state_desc 
+, perm.permission_name 
+, QUOTENAME(USER_NAME(obj.schema_id)) + '.' + QUOTENAME(obj.name) 
++ CASE WHEN cl.column_id IS NULL THEN SPACE(0) ELSE '(' + QUOTENAME(cl.name COLLATE DATABASE_DEFAULT) + ')' END AS [Object] 
+, QUOTENAME(u.name COLLATE database_default) as Usr_Name 
+, u.type_Desc 
+, obj.type_desc 
+, TSQL = perm.state_desc + N' ' + perm.permission_name 
++ N' ON ' + QUOTENAME(USER_NAME(obj.schema_id)) + '.' + QUOTENAME(obj.name) 
++ N' TO ' + QUOTENAME(u.name COLLATE database_default) 
+FROM sys.database_permissions AS perm 
+INNER JOIN 
+sys.objects AS obj 
+ON perm.major_id = obj.[object_id] 
+INNER JOIN 
+sys.database_principals AS u 
+ON perm.grantee_principal_id = u.principal_id 
+LEFT JOIN 
+sys.columns AS cl 
+ON cl.column_id = perm.minor_id AND cl.[object_id] = perm.major_id 
+where 
+obj.name not like 'dt%' 
+and obj.is_ms_shipped = 0 
+and u.name not in ('dbo', 'sa', 'public') 
+ORDER BY perm.permission_name ASC, perm.state_desc ASC 
+

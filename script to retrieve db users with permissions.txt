@@ -1,0 +1,21 @@
+select 
+	roles.name Role_Name,
+	members.name Member_Name,
+	'exec sp_addrolemember ['+
+	roles.name+
+	'], ['+
+	members.name+
+	']' Grant_Permission
+from sys.database_principals members
+inner join sys.database_role_members drm
+	on members.principal_id = drm.member_principal_id
+inner join sys.database_principals roles
+	on drm.role_principal_id = roles.principal_id
+where members.name <> 'dbo'
+
+
+--------------------------------------
+
+To retrieve users from server:
+
+select * from sys.sysusers
