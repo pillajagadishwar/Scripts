@@ -1,0 +1,4 @@
+SELECt DB_NAME(database_id) AS DBName, database_id, type_desc AS [FILE TYPE], COUNT(physical_name) AS [Total Files] from sys.master_files where database_id>4
+GROUP BY type_desc, database_id
+ORDER BY [Total Files] DESC
+--type_desc, physical_name, database_id, physical_name
