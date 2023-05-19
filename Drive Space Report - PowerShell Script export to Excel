@@ -1,0 +1,11 @@
+#include mount points
+$ComputerName = 'BLONDBNUMS44'
+$a = Get-WmiObject Win32_Volume -ComputerName $ComputerName  |  Select-Object driveletter,Label,`
+` @{Name='capacityGB';Expression={[math]::Round($_.capacity/1GB,0)}},
+` @{Name='used_spaceGB';Expression={[math]::Round($_.capacity/1GB,0) - [math]::Round($_.freespace/1GB,0)}},
+` @{Name='freespaceGB';Expression={[math]::Round($_.freespace/1GB,0)}} ,
+` @{Name='freespace%';Expression={[math]::Abs((100-[math]::Round(([math]::Round($_.capacity/1GB,0) - [math]::Round($_.freespace/1GB,0))/([math]::Round($_.capacity/1GB,0))*100,0)))}} |
+`  Sort-Object -Property Label
+#$a | Format-Table  
+ $a | Export-Excel C:\Users\jpilla\SQL_Stuff\DB_Sizing\BLONDBNUMS44-new.xls
+#Get-Process| Out-File  C:\Users\jpilla\SQL_Stuff\DB_Sizing\SBOSDBNUMS52.xls
