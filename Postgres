@@ -1,0 +1,590 @@
+PostgreSQL
+
+Saturday, 23 April, 2022
+3:25 PM
+
+
+Oracle Linux Root Password: P@ssword1
+Username: DevServer
+Password: P@ssword1
+192.168.1.1
+
+192.168.1.146
+
+rpm -qa | grep postgres
+postgres:x:26:26:PostgreSQL Server:/var/lib/pgsql:/bin/bash
+
+ ls -ld base pg_wal pg_wal/archive_status postgresql.conf postgresql.auto.conf
+
+systemctl status postgresql.service
+Service postgresql.service status
+
+Datafile location: /var/lib/pgsql/data/base
+Echo $HOME
+
+To use the latest PSQL, configure below path:
+
+	1. In postgres home directory
+		ls -lad .bash_profile
+	2. Vi .bash_profile
+	3. Add the below lines
+	export PGHOME=/usr/pgsql-12
+	export PATH=$PGHOME/bin:$PATH
+	4. Save and exit the file.
+	5. Exit and login back as postgres user and check the psql version
+		Which psql
+	6. Or use the below query
+		. .bash_profile
+	
+
+Create user in OS:
+Useradd user_name
+
+Pg_roles
+Pg_user
+
+Select current_user;
+
+# prompt -> superuser
+	Ø Prompt -> normal user
+
+Peer Authentication
+Host Based Authentication(HBA): Pg_hba.conf
+
+Create
+Monitor
+Manage
+Drop
+
+/etc/passwd/postgres
+
+Default database
+Postgres
+Template0
+Template1
+
+ insert into newtbl select from generate_series(50,1000000);
+
+Logical Backup:
+	1. Pg_dump
+	Pg_dump -d db_name > backupname
+Single db:
+Pg_dump -d db_name -f filename-$(date +"%H_%M_%S_%d_%m_%y")
+
+Table backup: Pg_dump -d db_name -t table_name -f filename-$(date +"%H_%M_%S_%d_%m_%y")
+
+Multi table: 
+Pg_dump -d db_name -t table_name -t table_name2 -f filename-$(date +"%H_%M_%S_%d_%m_%y")
+
+Schema only: 
+Pg_dump -d db_name -t table_name -f filename-$(date +"%H_%M_%S_%d_%m_%y")_schema_only --schema-only
+
+Data only: 
+Pg_dump -d db_name -t table_name -f filename-$(date +"%H_%M_%S_%d_%m_%y")_data_only --data-only
+
+Data backup in insert format:  (by default it is copy format)
+Pg_dump -d db_name -t table_name -f filename-$(date +"%H_%M_%S_%d_%m_%y")_insert_format --inserts
+
+Text format: 
+Pg_dump -d db_name -t table_name -f filename-$(date +"%H_%M_%S_%d_%m_%y").txt --format=plain
+
+Custom format: Applies compression
+ Pg_dump -d db_name -t table_name -f filename-$(date +"%H_%M_%S_%d_%m_%y").dmp --format=custom
+
+Directory format:
+Pg_dump -d db_name -f filename-$(date +"%H_%M_%S_%d_%m_%y").dir format=directory
+
+Directory format with parallelism: Here 4 is number of threads
+Pg_dump -d db_name -f filename-$(date +"%H_%M_%S_%d_%m_%y").dir format=directory -j 
+4
+
+Pg_dump -d db_name -f filename-$(date +"%H_%M_%S_%d_%m_%y").dir format=directory -v
+
+-d: DB name
+-t: Table name
+-f: File name
+-j: no of worker threads
+-v: to see the verbose
+
+To check type of file: file file_name
+
+Restore:
+
+Pg_restore
+
+If it is text backup use PSQL
+If it is directory or custom backup, use PG_RESTORE
+
+Restoring a text backup:
+	1. Create a clonedb.
+	2. Go to the backup location.
+	3. Psql -d destination_db_name -f backup_file_name
+
+Restoring a custom or directory backup:
+To see the contents of backups: Pg_restore backup_filename --list 
+
+To restore a single table from dump:
+Pg_restore -d destination_db_name -t table_name backup_file_name.dmp
+
+To restore a single or multiple table from dump:
+Pg_restore -d destination_db_name -t table_name backup_file_name.dmp --clean -v
+
+--clean: drop existing structure and restore
+-v: Verbose
+
+If --clean is not used, data will be appended.
+
+This will stop the restore if atleast 1 warning is encountered:
+Pg_restore -d destination_db_name -t table_name backup_file_name.dmp -v -1
+
+To restore schema only from dump:
+Pg_restore -d destination_db_name -t table_name backup_file_name.dmp -v --schema-only
+
+To restore data only from dump:
+Pg_restore -d destination_db_name -t table_name backup_file_name.dmp -v --data-only
+
+To check the size of a file:
+
+In MB: du -sm file_name
+
+	1. Pg_dumpall
+	Pg_dumpall > backupname
+
+Physical backups: We take backup of all locations
+	1. Offline backup: DB can me in any mode(Archive or no archive)
+	2. Online backup: DB must be in Archive mode(Backup + WAL files(Archive files))
+
+Physical backup can be done using 2 methods:
+	1. Manual--> Use OS commands and backup locations + zip
+	2. Pg_basebackup Backup, zip
+
+Manual Offline Backup:
+	1. Stop the service.
+	2. Verify service is stopped.
+	3. Copy all the locations into backup path.
+	4. Start the service.
+	5. Compress the backup into a file. 
+		Tar -cvf destination_filename.tar source_file_name
+	6. Compress the backup file using compression method.
+		Bzip2 destination_filename.tar
+		(Bzip2 is the highest level of compression)
+		
+To check the size of all files in a directory: du -sm *
+
+Manual Online Backup:
+
+	1. Place PostgreSQL db to backup mode. Start backup mode
+		a. To check if the db is in backup mode.
+			Select pg_is_in_backup();
+			Select pg_start_backup('name');
+		When backup mode is enabled, checkpoint takes place
+	2. Verify the db is in backup mode
+		Select pg_is_in_backup();
+	3. Copy all the locations
+	4. Place PostgreSQL db to noraml mode. Stop backup mode
+		Select pg_stop_backup();
+	5. Compress the backup into a file
+	6. Compress the backup file using compression method
+		Both step 5 & 6 are done in single step. Use below command
+		Tar -czf destination.tar.gz source_name
+		
+Physical backup using Pg_basebackup:
+
+Pg_basebackup 
+	--format = tar -z
+	-D /Directory/Backup/OL_Backup_$(date +"%H_%M_%S_%d_%m_%y")
+	-P (Progress)
+	-x fetch
+To copy directories:
+Cp -r source destination
+
+
+\l - List databases
+\db - List table spaces
+\c dbname - connect to database
+
+Restore:
+
+
+Restore + Recovery
+
+	1. Restore base backup with and non default locations.
+	2. Set configuration parameters.
+	3. Start service in recovery mode.
+	4. Perform post recovery activity
+
+	1. Restore base backup base.tar.gz 
+	Tar -xzf base.tar.gz -c $PGDATA
+	2. Use tablespace_map file
+		a. Restore Non Default Locations
+		b. <TBS_OID>.tar.gz
+	3. Ensure All Archive WAL file are accessible
+		a. Use backup_label file
+
+Recovery:
+	1. Use postgresql.conf file
+	2. Set parameters
+	3. Restore_command & recovery_target_time
+	4. Create recovery.signal file in PGDATA location. Touch recovery.signal
+		a. Ls -ld recovery.signal
+	5. Start the service
+	6. End recovery mode.
+	7. Comment recovery parameters that were set in step 3.
+
+Use pg_waldump to view the content in WAL files
+
+
+Replication
+
+Thursday, 19 January, 2023
+12:36 PM
+
+On Primary:
+
+On Secondary:
+
+In the data directory remove all the files.
+Rm -rf *
+
+pg_basebackup -h 192.168.33.10 -U repl -p 5432 -D /var/lib/pgsql/12/data --format=plain -Xstream -P -R
+
+Vi postgresql.conf
+
+Restore_command = 'cp backup_directory/%f %p'
+
+'cp /var/lib/pgsql/12/backups/backup_media/%f %p'
+
+Start postgres
+
+Tail -f $PGDATA/log/log_file
+
+Migration
+
+Sunday, 5 February, 2023
+3:11 PM
+
+Upgrades
+
+Friday, 13 January, 2023
+8:28 AM
+
+Postgresql.org
+
+Pg_upgrade
+Pg_dumpall>backup.sql
+Psql -c "select version()";
+Psql -c "show data_directory;"
+Rpm -q centos-release
+
+Yum install -y postgresql14-server
+Sudo /usr/pgsql-14/bin/postgresql14-setup initdb
+
+Change the port number of newly installed version
+Vi postgresql.conf
+
+Change the port. 
+Systemctl start postgresql-14
+Systemctl status postgresql-*
+Stop both the installed postgresql versions.
+
+Go to the latest version folder
+Cd /usr/pgsql-14/bin
+Run the pg_upgrade utility here..
+/usr/pgsql-14/bin/Pg_upgrade -b /usr/pgsql-12/bin -B /usr/pgsql-14/bin -d /var/lib/pgsql/12/data -D /var/lib/pgsql/14/data -c
+
+To check for errors during upgrade..
+Loaded_libraries.txt
+To read this file run the below command.
+More loaded_libraries.txt
+$libdir/pgcrypto: Error could not access file $libdir/pgcrypto: No such file or directory
+
+Yum install postgresql14-contrib
+After this installation, start the new postgres version.
+Systemctl start postgresql-14
+
+Psql -p 5433
+List all the installed extension using below query.
+\dx
+Create extention pgcrypto;
+Stop the service.
+Systemctl stop postgresql-14
+
+Run the below query:
+/usr/pgsql-14/bin/pg_upgrade -b /usr/pgsql-12/bin -B /usr/pgsql-14/bin -d /var/lib/pgsql/12/data -D /var/lib/pgsql/14/data -c
+
+-c - checks compatibility.
+Once this is passed run the above query without -c
+
+/usr/pgsql-14/bin/Pg_upgrade -b /usr/pgsql-12/bin -B /usr/pgsql-14/bin -d /var/lib/pgsql/12/data -D /var/lib/pgsql/14/data
+
+Start the service.
+Systemctl start postgresql-14
+
+
+
+
+
+Rollback....
+
+
+User Management
+
+Thursday, 15 December, 2022
+9:27 AM
+
+To create new user in linux: useradd username
+Users are saved in /etc/passwd
+To view any user existence use below command:
+Cat /etc/passwd | grep user_name
+
+
+Installation
+
+Wednesday, 23 November, 2022
+12:18 AM
+
+What version of Linux are you using?
+What version of Postgres are you using?
+
+Istallation issues in Oracle Linux 8:
+Fix: dnf -y module disable postgresql
+
+Check if Postgres is installed:
+ rpm -qa | grep postgresql
+
+Initializing initdb:
+Cd /usr/pgsql-12/bin
+service postgresql-12 initdb
+
+Try the below:
+Postgresql-12-setup initdb
+
+
+Echo $HOME
+
+Echo $PGDATA
+
+1. In postgres home directory
+	ls -lad .bash_profile
+2. Vi .bash_profile
+3. Add the below lines
+export PGHOME=/usr/pgsql-12
+export PATH=$PGHOME/bin:$PATH
+4. Save and exit the file.
+5. Exit and login back as postgres user and check the psql version
+	Which psql
+6. Or use the below query
+	. .bash_profile
+
+
+
+
+Install the RPM of repository
+The yum can find and install correct version of the software on the OS
+[root@bhadra Desktop]# yum install https://download.postgresql.org/pub/repos/yum/reporpms/EL-6-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+Is this ok [y/N]: y
+
+
+
+Install the psql client package 
+[root@bhadra Desktop]# yum install postgresql12
+Is this ok [y/N]: y
+
+
+
+Install PostgreSQL Server package 
+[root@bhadra Desktop]# yum install postgresql12-server
+Is this ok [y/N]: y
+
+
+
+Initialize
+The first command to initialize the database in PGDATA
+Need to do only once.
+[root@bhadra Desktop]# service postgresql-12 initdb
+
+
+Configure Service
+[root@bhadra Desktop]# chkconfig postgresql-12 --list
+
+[root@bhadra Desktop]# chkconfig postgresql-12 on
+
+[root@bhadra Desktop]# chkconfig postgresql-12 --list
+
+
+
+
+
+
+
+
+Manage Service
+[root@bhadra Desktop]# service postgresql-12 status
+postgresql-12 is stopped
+
+[root@bhadra Desktop]# service postgresql-12 start
+Starting postgresql-12 service:                            [  OK  ]
+
+[root@bhadra Desktop]# service postgresql-12 status
+postgresql-12 is stopped
+
+
+[root@bhadra Desktop]# service postgresql-12 stop
+Stoping postgresql-12 service:                            [  OK  ]
+
+[root@bhadra Desktop]# service postgresql-12 status
+postgresql-12 (pid  4769) is running...
+
+
+Remove PostgreSQL Packages
+[root@bhadra Desktop]# yum erase postgresql12
+
+
+[root@bhadra Desktop]# yum erase postgresql12-server
+
+Interview questions
+
+Thursday, 19 January, 2023
+12:30 PM
+
+Queries
+
+Thursday, 19 January, 2023
+12:33 PM
+
+insert into location(id) values (generate_series(3, 1000000));
+
+Linux Commands
+
+Tuesday, 22 November, 2022
+5:28 PM
+
+Ps -ef
+Top
+LS
+
+
+Tablespace
+
+Friday, 10 June, 2022
+4:43 PM
+
+To create a new tablespace:
+create tablespace newtbs location '/var/lib/pgsql/tbs_files';
+
+select * from pg_tablespace;
+
+Replication
+
+Sunday, 29 May, 2022
+3:11 PM
+
+	1. Warm standby - High Availability
+	2. Hot standby - HA Read only (Default)
+		a. WAL Replication
+			i. Asynchronous (Default)
+			ii. Synchronous
+		b. Logical Replication
+		
+		
+Configuring Replication
+	
+In Primary:
+	1. Open postgresql.conf
+		a. Vi postgresql.conf
+		b. Archive_mode = on
+		c. Archive_command = 'cp %p /backup directory/Archive_destination/%f
+		d. Restart service. pg_ctl restart
+	2. Create a user for replication.
+		a. Create user username with replication encrypted password 'password';
+	3. Open postgresql.conf
+		a. Vi postgresql.conf
+		b. Listen addresses = '*'
+		c. Port = 5432
+		d. Max_wal_senders = 10
+	4. Configure HBA(Host Based Authentication)
+		a. Vi pg_hba.conf
+		b. Host replication username ip_address/32 md5
+In Secondary:
+	1. Stop service
+	2. Remove database files
+	3. Pg_basebackup -h IPAdd -U repluser -p 5432
+	-D destination_$PGDATA_location --format=plain -X stream -P -R
+	4. Verify the backup
+	5. Set parameters in configuration file
+	File: postgresql.conf
+	Parameters: restore_command = 'cp backup_dest/Archive_Dest/%f %p'
+	6. Start the service in Standby mode
+	File: standby.signal
+	Path: $PGDATA
+	7. Verify standby database details:
+	Select pg_is_in_recovery();
+	
+	To manually failover run the below query on secondary:
+	Pg_ctl promote -D pgdata_location
+	
+	
+	To view status/update of log file run the below command in $PGDATA/log:
+	ls -ltr
+	Tail -f latest_logfile.log
+
+Performance Tuning
+
+Wednesday, 22 June, 2022
+11:47 PM
+
+Vacuum:
+	1. To remove dead tuples(rows) - To eliminate fragmentation
+	2. Reclaim space
+	3. Gather statistics by analyzing objects
+
+Show autovacuum_analyze_threshold;
+Vacuum db_name;
+Vacuum tbl_name;
+
+
+Explain:
+To get execution plan of a query.
+Eg: Explain query;
+Eg: explain analyze query;
+
+
+Memory:
+Work memory (work_mem)
+Maintenance work memory (maintenance_work_mem)
+
+Stats Collector:
+Show track_activities;
+Show track_counts;
+Show track_io_timing;
+
+$PGDATA/Pg_stats_tmp/ -- Location of stats
+
+Select * from pg_stat_database where datname='db_name';
+Select * from pg_stat_activity
+
+Select * from pg_stat_user_indexes;
+Pg_stat_user_tables;
+
+Pg_stat_activity
+
+Compactation:
+
+
+
+Create extension to find out free space in pages.
+Necessary modules must be installed to create extensions.
+
+Microsoft Azure DP 300
+
+Sunday, 22 May, 2022
+7:32 PM
+
+Offerings:
+
+Managed Instance
+SQL Databases
+SQL Virtual Machine - SQL on Windows 2019/2016
+			       Bring your own license (BYOL)
+
+What is lift & shift?
