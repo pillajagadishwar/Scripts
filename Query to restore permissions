@@ -1,0 +1,43 @@
+DECLARE cmd_cursor CURSOR FOR 
+SELECT permission FROM [DBAdmin].[refresh].[pre_refresh_permissions]
+  WHERE db in (
+ 'baml'
+,'barra'
+,'bbo'
+,'InsiderFeed'
+,'inv'
+,'Ivydb'
+,'IvydbASIA'
+,'IvydbCanada'
+,'IvydbEurope'
+,'kamakura'
+,'markit'
+,'revere'
+,'Suntime'
+,'trace'
+,'Vendor'
+,'xpressfeed')
+  
+AND collected > '2024-03-02'
+  order by db
+
+  SELECT permission FROM [DBAdmin].[refresh].[pre_refresh_permissions]
+  WHERE db in (
+ 'fds')
+  
+AND collected > '2024-03-02'
+  order by db
+
+OPEN cmd_cursor 
+FETCH NEXT FROM cmd_cursor INTO @SqlCommand
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    -- Execute the SQL command
+    EXEC sp_executesql @SqlCommand
+
+    FETCH NEXT FROM cmd_cursor INTO @SqlCommand
+END
+
+CLOSE cmd_cursor
+DEALLOCATE cmd_cursor
