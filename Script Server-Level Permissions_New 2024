@@ -1,0 +1,42 @@
+-- Script server-level permissions
+SELECT 
+    'GRANT ' + spr.permission_name COLLATE DATABASE_DEFAULT + ' TO [' + sp.name COLLATE DATABASE_DEFAULT + '];' AS PermissionScript
+FROM sys.server_principals AS sp
+JOIN sys.server_permissions AS spr
+    ON sp.principal_id = spr.grantee_principal_id
+WHERE sp.type IN ('S', 'U', 'G') -- SQL Login, Windows Login, Windows Group
+ORDER BY sp.name, spr.permission_name;
+
+-- Script database-level permissions for each database
+DECLARE @DBName NVARCHAR(255);
+DECLARE @SQL NVARCHAR(MAX);
+
+DECLARE db_cursor CURSOR FOR
+SELECT name
+FROM sys.databases
+WHERE state_desc = 'ONLINE' AND database_id > 4; -- Exclude system databases
+
+OPEN db_cursor;
+FETCH NEXT FROM db_cursor INTO @DBName;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    SET @SQL = '
+    USE [' + @DBName + '];
+
+    SELECT 
+        ''GRANT '' + drp.permission_name COLLATE DATABASE_DEFAULT + '' ON DATABASE::[' + @DBName + '] TO ['' + dp.name COLLATE DATABASE_DEFAULT + ''];'' AS PermissionScript
+    FROM sys.database_principals AS dp
+    JOIN sys.database_permissions AS drp
+        ON dp.principal_id = drp.grantee_principal_id
+    WHERE dp.type IN (''S'', ''U'', ''G'') -- SQL User, Windows User, Windows Group
+    ORDER BY dp.name, drp.permission_name;
+    ';
+    
+    EXEC sp_executesql @SQL;
+    
+    FETCH NEXT FROM db_cursor INTO @DBName;
+END;
+
+CLOSE db_cursor;
+DEALLOCATE db_cursor;
